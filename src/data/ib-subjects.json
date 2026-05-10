@@ -1,0 +1,71 @@
+[
+  {
+    "group": 1,
+    "groupName": "Studies in Language and Literature",
+    "subjects": [
+      { "id": "lang-lit-a", "name": "Language A: Language and Literature", "availableLevels": ["HL", "SL"] },
+      { "id": "lit-a", "name": "Language A: Literature", "availableLevels": ["HL", "SL"] }
+    ]
+  },
+  {
+    "group": 2,
+    "groupName": "Language Acquisition",
+    "subjects": [
+      { "id": "lang-b-english", "name": "English B", "availableLevels": ["HL", "SL"] },
+      { "id": "lang-b-french", "name": "French B", "availableLevels": ["HL", "SL"] },
+      { "id": "lang-b-spanish", "name": "Spanish B", "availableLevels": ["HL", "SL"] },
+      { "id": "lang-b-mandarin", "name": "Mandarin B", "availableLevels": ["HL", "SL"] },
+      { "id": "lang-b-german", "name": "German B", "availableLevels": ["HL", "SL"] },
+      { "id": "lang-ab-initio-french", "name": "French ab initio", "availableLevels": ["SL"] },
+      { "id": "lang-ab-initio-spanish", "name": "Spanish ab initio", "availableLevels": ["SL"] },
+      { "id": "lang-ab-initio-mandarin", "name": "Mandarin ab initio", "availableLevels": ["SL"] }
+    ]
+  },
+  {
+    "group": 3,
+    "groupName": "Individuals and Societies",
+    "subjects": [
+      { "id": "history", "name": "History", "availableLevels": ["HL", "SL"] },
+      { "id": "geography", "name": "Geography", "availableLevels": ["HL", "SL"] },
+      { "id": "economics", "name": "Economics", "availableLevels": ["HL", "SL"] },
+      { "id": "psychology", "name": "Psychology", "availableLevels": ["HL", "SL"] },
+      { "id": "business-management", "name": "Business Management", "availableLevels": ["HL", "SL"] },
+      { "id": "philosophy", "name": "Philosophy", "availableLevels": ["HL", "SL"] },
+      { "id": "global-politics", "name": "Global Politics", "availableLevels": ["HL", "SL"] },
+      { "id": "social-cultural-anthropology", "name": "Social and Cultural Anthropology", "availableLevels": ["HL", "SL"] },
+      { "id": "information-technology-global-society", "name": "Information Technology in a Global Society (ITGS)", "availableLevels": ["HL", "SL"] }
+    ]
+  },
+  {
+    "group": 4,
+    "groupName": "Sciences",
+    "subjects": [
+      { "id": "biology", "name": "Biology", "availableLevels": ["HL", "SL"] },
+      { "id": "chemistry", "name": "Chemistry", "availableLevels": ["HL", "SL"] },
+      { "id": "physics", "name": "Physics", "availableLevels": ["HL", "SL"] },
+      { "id": "computer-science", "name": "Computer Science", "availableLevels": ["HL", "SL"] },
+      { "id": "design-technology", "name": "Design Technology", "availableLevels": ["HL", "SL"] },
+      { "id": "environmental-systems-societies", "name": "Environmental Systems and Societies (ESS)", "availableLevels": ["SL"] },
+      { "id": "sports-exercise-health-science", "name": "Sports, Exercise and Health Science (SEHS)", "availableLevels": ["HL", "SL"] }
+    ]
+  },
+  {
+    "group": 5,
+    "groupName": "Mathematics",
+    "subjects": [
+      { "id": "math-aa", "name": "Mathematics: Analysis and Approaches (AA)", "availableLevels": ["HL", "SL"] },
+      { "id": "math-ai", "name": "Mathematics: Applications and Interpretation (AI)", "availableLevels": ["HL", "SL"] }
+    ]
+  },
+  {
+    "group": 6,
+    "groupName": "The Arts",
+    "subjects": [
+      { "id": "visual-arts", "name": "Visual Arts", "availableLevels": ["HL", "SL"] },
+      { "id": "music", "name": "Music", "availableLevels": ["HL", "SL"] },
+      { "id": "theatre", "name": "Theatre", "availableLevels": ["HL", "SL"] },
+      { "id": "dance", "name": "Dance", "availableLevels": ["HL", "SL"] },
+      { "id": "film", "name": "Film", "availableLevels": ["HL", "SL"] }
+    ]
+  }
+]

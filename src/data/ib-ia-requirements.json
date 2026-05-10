@@ -1,0 +1,216 @@
+{
+  "biology": {
+    "name": "Biology IA",
+    "type": "Individual Investigation",
+    "targetWordCount": 3000,
+    "maxWordCount": 3000,
+    "components": [
+      "Research question",
+      "Background information",
+      "Methodology",
+      "Raw data collection",
+      "Data processing and analysis",
+      "Conclusion",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "rq", "title": "Research Question Approved", "order": 1 },
+      { "id": "method", "title": "Methodology Approved", "order": 2 },
+      { "id": "data", "title": "Data Collection Complete", "order": 3 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 4 },
+      { "id": "final", "title": "Final Submission", "order": 5 }
+    ]
+  },
+  "chemistry": {
+    "name": "Chemistry IA",
+    "type": "Individual Investigation",
+    "targetWordCount": 3000,
+    "maxWordCount": 3000,
+    "components": [
+      "Research question",
+      "Background information",
+      "Methodology",
+      "Raw data collection",
+      "Data processing and analysis",
+      "Conclusion",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "rq", "title": "Research Question Approved", "order": 1 },
+      { "id": "method", "title": "Methodology Approved", "order": 2 },
+      { "id": "data", "title": "Data Collection Complete", "order": 3 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 4 },
+      { "id": "final", "title": "Final Submission", "order": 5 }
+    ]
+  },
+  "physics": {
+    "name": "Physics IA",
+    "type": "Individual Investigation",
+    "targetWordCount": 3000,
+    "maxWordCount": 3000,
+    "components": [
+      "Research question",
+      "Background information",
+      "Methodology",
+      "Raw data collection",
+      "Data processing and analysis",
+      "Conclusion",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "rq", "title": "Research Question Approved", "order": 1 },
+      { "id": "method", "title": "Methodology Approved", "order": 2 },
+      { "id": "data", "title": "Data Collection Complete", "order": 3 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 4 },
+      { "id": "final", "title": "Final Submission", "order": 5 }
+    ]
+  },
+  "economics": {
+    "name": "Economics IA",
+    "type": "Portfolio (3 commentaries)",
+    "targetWordCount": 2250,
+    "maxWordCount": 2250,
+    "components": [
+      "Commentary 1: Microeconomics",
+      "Commentary 2: Macroeconomics",
+      "Commentary 3: International / Development"
+    ],
+    "milestones": [
+      { "id": "c1", "title": "Commentary 1 Submitted", "order": 1 },
+      { "id": "c2", "title": "Commentary 2 Submitted", "order": 2 },
+      { "id": "c3", "title": "Commentary 3 Submitted", "order": 3 },
+      { "id": "final", "title": "Portfolio Finalised", "order": 4 }
+    ]
+  },
+  "history": {
+    "name": "History IA",
+    "type": "Historical Investigation",
+    "targetWordCount": 2200,
+    "maxWordCount": 2200,
+    "components": [
+      "Identification and evaluation of sources",
+      "Investigation",
+      "Reflection"
+    ],
+    "milestones": [
+      { "id": "topic", "title": "Topic Approved", "order": 1 },
+      { "id": "sources", "title": "Sources Identified", "order": 2 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "geography": {
+    "name": "Geography IA",
+    "type": "Fieldwork Investigation",
+    "targetWordCount": 2500,
+    "maxWordCount": 2500,
+    "components": [
+      "Research question",
+      "Fieldwork methodology",
+      "Data presentation",
+      "Analysis and conclusion",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "rq", "title": "Research Question Approved", "order": 1 },
+      { "id": "fieldwork", "title": "Fieldwork Complete", "order": 2 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "psychology": {
+    "name": "Psychology IA",
+    "type": "Experimental Study",
+    "targetWordCount": 2200,
+    "maxWordCount": 2200,
+    "components": [
+      "Introduction",
+      "Exploration",
+      "Analysis",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "proposal", "title": "Proposal Approved", "order": 1 },
+      { "id": "data", "title": "Data Collection Complete", "order": 2 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "math-aa": {
+    "name": "Mathematics AA IA",
+    "type": "Mathematical Exploration",
+    "targetWordCount": 2000,
+    "maxWordCount": 3000,
+    "components": [
+      "Introduction",
+      "Mathematical content",
+      "Personal engagement",
+      "Reflection",
+      "Use of mathematics"
+    ],
+    "milestones": [
+      { "id": "topic", "title": "Topic Approved", "order": 1 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 2 },
+      { "id": "draft2", "title": "Second Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "math-ai": {
+    "name": "Mathematics AI IA",
+    "type": "Mathematical Exploration",
+    "targetWordCount": 2000,
+    "maxWordCount": 3000,
+    "components": [
+      "Introduction",
+      "Mathematical content",
+      "Personal engagement",
+      "Reflection",
+      "Use of mathematics"
+    ],
+    "milestones": [
+      { "id": "topic", "title": "Topic Approved", "order": 1 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 2 },
+      { "id": "draft2", "title": "Second Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "business-management": {
+    "name": "Business Management IA",
+    "type": "Research Project",
+    "targetWordCount": 1800,
+    "maxWordCount": 1800,
+    "components": [
+      "Introduction",
+      "Methodology",
+      "Results and findings",
+      "Analysis and discussion",
+      "Conclusion and recommendations"
+    ],
+    "milestones": [
+      { "id": "proposal", "title": "Proposal Approved", "order": 1 },
+      { "id": "research", "title": "Research Complete", "order": 2 },
+      { "id": "draft1", "title": "First Draft Submitted", "order": 3 },
+      { "id": "final", "title": "Final Submission", "order": 4 }
+    ]
+  },
+  "computer-science": {
+    "name": "Computer Science IA",
+    "type": "Solution Development",
+    "targetWordCount": 2000,
+    "maxWordCount": 2000,
+    "components": [
+      "Planning",
+      "Solution overview",
+      "Development",
+      "Functionality testing",
+      "Evaluation"
+    ],
+    "milestones": [
+      { "id": "proposal", "title": "Proposal Approved", "order": 1 },
+      { "id": "design", "title": "Design Complete", "order": 2 },
+      { "id": "development", "title": "Development Complete", "order": 3 },
+      { "id": "testing", "title": "Testing Complete", "order": 4 },
+      { "id": "final", "title": "Final Submission", "order": 5 }
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "biology": {
+    "topics": [
+      { "id": "bio-1", "title": "Cell Biology", "subtopics": ["Cell theory", "Prokaryotic and eukaryotic cells", "Membrane structure", "Membrane transport", "Cell division"] },
+      { "id": "bio-2", "title": "Molecular Biology", "subtopics": ["Molecules to metabolism", "Water", "Carbohydrates and lipids", "Proteins", "Enzymes", "DNA structure and replication", "Transcription and translation"] },
+      { "id": "bio-3", "title": "Genetics", "subtopics": ["Genes", "Chromosomes", "Meiosis", "Inheritance", "Genetic modification"] },
+      { "id": "bio-4", "title": "Ecology", "subtopics": ["Species, communities and ecosystems", "Energy flow", "Carbon cycling", "Climate change"] },
+      { "id": "bio-5", "title": "Evolution and Biodiversity", "subtopics": ["Evidence for evolution", "Natural selection", "Classification of biodiversity", "Cladistics"] },
+      { "id": "bio-6", "title": "Human Physiology", "subtopics": ["Digestion and absorption", "The blood system", "Defence against infectious disease", "Gas exchange", "Neurons and synapses", "Hormones, homeostasis and reproduction"] }
+    ]
+  },
+  "chemistry": {
+    "topics": [
+      { "id": "chem-1", "title": "Stoichiometric Relationships", "subtopics": ["Introduction to the particulate nature of matter", "The mole concept", "Reacting masses and volumes"] },
+      { "id": "chem-2", "title": "Atomic Structure", "subtopics": ["The nuclear atom", "Electron configuration", "Electrons in atoms"] },
+      { "id": "chem-3", "title": "Periodicity", "subtopics": ["Periodic table", "Periodic trends"] },
+      { "id": "chem-4", "title": "Chemical Bonding and Structure", "subtopics": ["Ionic bonding", "Covalent bonding", "Covalent structures", "Intermolecular forces", "Metallic bonding"] },
+      { "id": "chem-5", "title": "Energetics/Thermochemistry", "subtopics": ["Measuring energy changes", "Hess's Law", "Bond enthalpies"] },
+      { "id": "chem-6", "title": "Chemical Kinetics", "subtopics": ["Collision theory and rates of reaction", "Activation energy"] },
+      { "id": "chem-7", "title": "Equilibrium", "subtopics": ["Equilibrium", "The equilibrium law"] },
+      { "id": "chem-8", "title": "Acids and Bases", "subtopics": ["Theories of acids and bases", "Properties of acids and bases", "The pH scale", "Strong and weak acids and bases", "Acid deposition"] },
+      { "id": "chem-9", "title": "Redox Processes", "subtopics": ["Oxidation and reduction", "Electrochemical cells"] },
+      { "id": "chem-10", "title": "Organic Chemistry", "subtopics": ["Fundamentals of organic chemistry", "Functional group chemistry"] },
+      { "id": "chem-11", "title": "Measurement and Data Processing", "subtopics": ["Uncertainty and error in measurement", "Graphical techniques", "Spectroscopic identification"] }
+    ]
+  },
+  "physics": {
+    "topics": [
+      { "id": "phys-1", "title": "Measurements and Uncertainties", "subtopics": ["Measurement in physics", "Uncertainties and errors", "Vectors and scalars"] },
+      { "id": "phys-2", "title": "Mechanics", "subtopics": ["Motion", "Forces", "Work, energy and power", "Momentum and impulse"] },
+      { "id": "phys-3", "title": "Thermal Physics", "subtopics": ["Thermal concepts", "Modelling a gas"] },
+      { "id": "phys-4", "title": "Waves", "subtopics": ["Oscillations", "Travelling waves", "Wave characteristics", "Wave behaviour", "Standing waves"] },
+      { "id": "phys-5", "title": "Electricity and Magnetism", "subtopics": ["Electric fields", "Heating effect of electric currents", "Electric cells", "Magnetic effects of electric currents"] },
+      { "id": "phys-6", "title": "Circular Motion and Gravitation", "subtopics": ["Circular motion", "Newton's law of gravitation"] },
+      { "id": "phys-7", "title": "Atomic, Nuclear and Particle Physics", "subtopics": ["Discrete energy and radioactivity", "Nuclear reactions", "The structure of matter"] },
+      { "id": "phys-8", "title": "Energy Production", "subtopics": ["Energy sources", "Thermal energy transfer"] }
+    ]
+  },
+  "economics": {
+    "topics": [
+      { "id": "econ-1", "title": "Introduction to Economics", "subtopics": ["What is economics?", "How do economists approach the world?"] },
+      { "id": "econ-2", "title": "Microeconomics", "subtopics": ["Demand", "Supply", "Competitive market equilibrium", "Critique of the maximizing behaviour of consumers and producers", "Elasticity", "Role of government in microeconomics", "Market failure"] },
+      { "id": "econ-3", "title": "Macroeconomics", "subtopics": ["Measuring economic activity and illustrating its variations", "Variations in economic activity", "Macroeconomic objectives", "Economics of inequality and poverty", "Demand management", "Supply-side policies"] },
+      { "id": "econ-4", "title": "Global Economy", "subtopics": ["Benefits of international trade", "Types of trade protection", "Arguments for and against trade control", "Economic integration", "Exchange rates", "Balance of payments", "Sustainable development", "Measuring development", "Barriers to economic growth and development", "Economic growth and development strategies"] }
+    ]
+  },
+  "history": {
+    "topics": [
+      { "id": "hist-1", "title": "Prescribed Subject", "subtopics": ["Military leaders", "Conquest and its impact", "The move to global war"] },
+      { "id": "hist-2", "title": "World History Topics", "subtopics": ["Society and economy", "Causes and effects of 20th century wars", "Authoritarian states", "Independence movements", "Cold War"] },
+      { "id": "hist-3", "title": "HL Regional Option", "subtopics": ["History of Africa and the Middle East", "History of the Americas", "History of Asia and Oceania", "History of Europe"] }
+    ]
+  },
+  "math-aa": {
+    "topics": [
+      { "id": "maa-1", "title": "Number and Algebra", "subtopics": ["Number systems", "Sequences and series", "Exponents and logarithms", "Proof", "Complex numbers (HL)"] },
+      { "id": "maa-2", "title": "Functions", "subtopics": ["Functions", "Transformations", "Rational functions", "Exponential and logarithmic functions", "Trigonometric functions"] },
+      { "id": "maa-3", "title": "Geometry and Trigonometry", "subtopics": ["Geometry", "Trigonometry", "Vectors (HL)", "Lines and planes (HL)"] },
+      { "id": "maa-4", "title": "Statistics and Probability", "subtopics": ["Descriptive statistics", "Probability", "Probability distributions", "Hypothesis testing"] },
+      { "id": "maa-5", "title": "Calculus", "subtopics": ["Differentiation", "Integration", "Differential equations (HL)", "Maclaurin series (HL)"] }
+    ]
+  },
+  "math-ai": {
+    "topics": [
+      { "id": "mai-1", "title": "Number and Algebra", "subtopics": ["Number", "Sequences and series", "Financial mathematics", "Logarithms", "Complex numbers (HL)"] },
+      { "id": "mai-2", "title": "Functions", "subtopics": ["Functions", "Modelling", "Exponential and logarithmic models", "Trigonometric models"] },
+      { "id": "mai-3", "title": "Geometry and Trigonometry", "subtopics": ["Geometry", "Trigonometry", "Voronoi diagrams", "Vectors (HL)"] },
+      { "id": "mai-4", "title": "Statistics and Probability", "subtopics": ["Descriptive statistics", "Probability", "Probability distributions", "Hypothesis testing", "Bivariate statistics"] },
+      { "id": "mai-5", "title": "Calculus", "subtopics": ["Differentiation", "Integration", "Differential equations (HL)"] }
+    ]
+  },
+  "computer-science": {
+    "topics": [
+      { "id": "cs-1", "title": "System Fundamentals", "subtopics": ["Systems in organizations", "Computer architecture", "Networks", "Computational thinking"] },
+      { "id": "cs-2", "title": "Computer Organization", "subtopics": ["Computer architecture", "Secondary memory", "Operating systems", "Application software"] },
+      { "id": "cs-3", "title": "Networks", "subtopics": ["Network fundamentals", "Data transmission", "Wireless networking"] },
+      { "id": "cs-4", "title": "Computational Thinking, Problem-solving and Programming", "subtopics": ["General principles", "Connecting computational thinking and program design", "Introduction to programming"] },
+      { "id": "cs-d", "title": "Option D: Object-oriented Programming (HL)", "subtopics": ["Objects as a programming concept", "Features of OOP", "Program design", "Advanced program development"] }
+    ]
+  }
+}
