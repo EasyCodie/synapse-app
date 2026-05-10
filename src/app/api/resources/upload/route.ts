@@ -17,29 +17,32 @@ const TYPE_MAP: Record<string, string> = {
 };
 
 async function extractText(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const arrayBuffer = await file.arrayBuffer();
 
   if (file.type === "application/pdf") {
     try {
       const { PDFParse } = await import("pdf-parse");
-      const parser = new PDFParse({ data: buffer });
+      const data = new Uint8Array(arrayBuffer);
+      const parser = new PDFParse({ data });
       const result = await parser.getText();
       await parser.destroy();
       return result.text;
-    } catch {
+    } catch (err) {
+      console.error("PDF extraction failed:", err);
       return "";
     }
   }
 
   if (file.type === "text/plain" || file.type === "text/markdown") {
-    return buffer.toString("utf-8");
+    return Buffer.from(arrayBuffer).toString("utf-8");
   }
 
   // For DOCX/PPTX — extract raw text from XML inside the zip
   try {
     const { extractDocxText } = await import("@/lib/extract-docx");
-    return await extractDocxText(buffer);
-  } catch {
+    return await extractDocxText(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("DOCX extraction failed:", err);
     return "";
   }
 }

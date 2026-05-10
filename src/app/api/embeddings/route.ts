@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { generateEmbedding } from "@/lib/embeddings";
 import { z } from "zod";
 
 const EmbeddingRequestSchema = z.object({
@@ -10,15 +10,7 @@ const EmbeddingRequestSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-const bedrockClient = new BedrockRuntimeClient({
-  region: process.env.AWS_REGION ?? "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-  },
-});
-
-const CHUNK_SIZE = 500; // tokens approx
+const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 50;
 
 function chunkText(text: string): string[] {
@@ -31,19 +23,6 @@ function chunkText(text: string): string[] {
   }
 
   return chunks.length > 0 ? chunks : [text];
-}
-
-async function generateEmbedding(text: string): Promise<number[]> {
-  const command = new InvokeModelCommand({
-    modelId: "amazon.titan-embed-text-v2:0",
-    contentType: "application/json",
-    accept: "application/json",
-    body: JSON.stringify({ inputText: text, dimensions: 1024, normalize: true }),
-  });
-
-  const response = await bedrockClient.send(command);
-  const body = JSON.parse(new TextDecoder().decode(response.body)) as { embedding: number[] };
-  return body.embedding;
 }
 
 export async function POST(request: Request) {
