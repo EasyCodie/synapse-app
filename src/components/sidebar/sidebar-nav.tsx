@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronRight,
   MessageSquare,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/chat", label: "AI Chat", icon: MessageSquare },
+  { href: "/flashcards", label: "Flashcards", icon: GraduationCap },
   { href: "/calendar", label: "Calendar & Tasks", icon: CalendarDays },
   { href: "/subjects", label: "Subjects", icon: BookOpen },
   { href: "/core", label: "The Core", icon: Layers },

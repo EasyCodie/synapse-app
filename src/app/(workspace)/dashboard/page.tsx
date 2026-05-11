@@ -1,18 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { format } from "date-fns";
+import Link from "next/link";
 import {
   CheckSquare,
   BookOpen,
   ClipboardList,
-  Calendar,
+  GraduationCap,
 } from "lucide-react";
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [profileResult, subjectsResult, tasksResult, iasResult] =
+  const [profileResult, subjectsResult, tasksResult, iasResult, flashcardsResult] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -36,12 +37,22 @@ export default async function DashboardPage() {
         .select("id, title, status, due_date, subject_id")
         .eq("user_id", user.id)
         .order("due_date", { ascending: true }),
+      supabase
+        .from("flashcards")
+        .select("id, confidence, next_review")
+        .eq("user_id", user.id),
     ]);
 
   const profile = profileResult.data;
   const subjects = subjectsResult.data ?? [];
   const tasks = tasksResult.data ?? [];
   const ias = iasResult.data ?? [];
+  const flashcards = flashcardsResult.data ?? [];
+
+  const now = new Date();
+  const dueFlashcards = flashcards.filter(
+    (fc) => fc.next_review && new Date(fc.next_review) <= now
+  ).length;
 
   const greeting = getGreeting();
   const today = format(new Date(), "EEEE, MMMM d");
@@ -82,10 +93,10 @@ export default async function DashboardPage() {
           sublabel={`${ias.filter((ia) => ia.status === "submitted").length} submitted`}
         />
         <StatCard
-          label="Exam Session"
-          value={profile?.exam_session?.split(" ")[0] ?? "—"}
-          icon={Calendar}
-          sublabel={profile?.exam_session?.split(" ")[1] ?? ""}
+          label="Flashcards"
+          value={flashcards.length}
+          icon={GraduationCap}
+          sublabel={dueFlashcards > 0 ? `${dueFlashcards} due` : "all reviewed"}
         />
       </div>
 
@@ -93,9 +104,16 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming tasks */}
         <div className="bg-surface-1 border border-hairline rounded-lg p-5">
-          <h2 className="text-card-title text-ink mb-4">Upcoming Tasks</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-card-title text-ink">Upcoming Tasks</h2>
+            <Link href="/calendar" className="text-caption text-primary hover:text-primary-hover transition-colors">
+              View all
+            </Link>
+          </div>
           {tasks.length === 0 ? (
-            <p className="text-body-sm text-ink-subtle">No upcoming tasks. Add one in Calendar.</p>
+            <p className="text-body-sm text-ink-subtle py-4 text-center">
+              No upcoming tasks. Add one in Calendar.
+            </p>
           ) : (
             <div className="space-y-2">
               {tasks.map((task) => (
@@ -120,9 +138,14 @@ export default async function DashboardPage() {
 
         {/* IA Progress */}
         <div className="bg-surface-1 border border-hairline rounded-lg p-5">
-          <h2 className="text-card-title text-ink mb-4">IA Progress</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-card-title text-ink">IA Progress</h2>
+            <Link href="/ia-manager" className="text-caption text-primary hover:text-primary-hover transition-colors">
+              View all
+            </Link>
+          </div>
           {ias.length === 0 ? (
-            <p className="text-body-sm text-ink-subtle">No IAs tracked yet.</p>
+            <p className="text-body-sm text-ink-subtle py-4 text-center">No IAs tracked yet.</p>
           ) : (
             <div className="space-y-3">
               {ias.slice(0, 5).map((ia) => {
@@ -147,13 +170,18 @@ export default async function DashboardPage() {
 
         {/* Subjects overview */}
         <div className="bg-surface-1 border border-hairline rounded-lg p-5 lg:col-span-2">
-          <h2 className="text-card-title text-ink mb-4">Your Subjects</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-card-title text-ink">Your Subjects</h2>
+            <Link href="/subjects" className="text-caption text-primary hover:text-primary-hover transition-colors">
+              View all
+            </Link>
+          </div>
           {subjects.length === 0 ? (
             <p className="text-body-sm text-ink-subtle">No subjects found.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {subjects.map((subject) => (
-                <a
+                <Link
                   key={subject.id}
                   href={`/subjects/${subject.id}`}
                   className="flex items-center justify-between px-3 py-2.5 bg-surface-2 border border-hairline rounded-md hover:border-hairline-strong transition-colors group"
@@ -164,7 +192,7 @@ export default async function DashboardPage() {
                   <span className={`text-caption px-1.5 py-0.5 rounded-sm ml-2 shrink-0 ${subject.level === "HL" ? "bg-primary/10 text-primary" : "bg-surface-3 text-ink-subtle"}`}>
                     {subject.level}
                   </span>
-                </a>
+                </Link>
               ))}
             </div>
           )}
@@ -218,7 +246,7 @@ function priorityColor(priority: string) {
     low: "bg-ink-tertiary",
     medium: "bg-ink-subtle",
     high: "bg-primary",
-    urgent: "bg-destructive",
+    urgent: "bg-red-500",
   };
   return map[priority] ?? "bg-ink-tertiary";
 }

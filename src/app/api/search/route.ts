@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     const { data: results, error } = await supabase.rpc("search_embeddings", {
       query_embedding: queryEmbedding,
       match_user_id: user.id,
-      match_threshold: 0.5,
-      match_count: 10,
+      match_threshold: 0.35,
+      match_count: 15,
     });
 
     if (error) {

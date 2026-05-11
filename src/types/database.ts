@@ -438,6 +438,44 @@ export interface Database {
           created_at?: string;
         };
       };
+      flashcards: {
+        Row: {
+          id: string;
+          user_id: string;
+          subject_id: string | null;
+          resource_id: string | null;
+          front: string;
+          back: string;
+          tags: string[];
+          confidence: number;
+          next_review: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          subject_id?: string | null;
+          resource_id?: string | null;
+          front: string;
+          back: string;
+          tags?: string[];
+          confidence?: number;
+          next_review?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          subject_id?: string | null;
+          resource_id?: string | null;
+          front?: string;
+          back?: string;
+          tags?: string[];
+          confidence?: number;
+          next_review?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
