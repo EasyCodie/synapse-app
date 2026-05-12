@@ -53,8 +53,9 @@ function formatDateKey(year: number, month: number, day: number) {
 }
 
 function isSameDay(dateStr: string, year: number, month: number, day: number) {
-  const d = new Date(dateStr);
-  return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+  // Compare directly against the date string to avoid timezone shifts
+  const target = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return dateStr.startsWith(target);
 }
 
 const MONTH_NAMES = [
@@ -122,7 +123,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
   // Get tasks/milestones for a specific day
   const getItemsForDay = (day: number) => {
     const dayTasks = tasks.filter(
-      (t) => t.due_date && isSameDay(t.due_date, viewYear, viewMonth, day)
+      (t) => t.due_date && !t.completed && isSameDay(t.due_date, viewYear, viewMonth, day)
     );
     const dayMilestones = milestones.filter(
       (m) => isSameDay(m.date, viewYear, viewMonth, day)
@@ -133,12 +134,13 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
   // Upcoming incomplete tasks (next 14 days)
   const upcoming = tasks
     .filter((t) => !t.completed && t.due_date)
-    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+    .sort((a, b) => a.due_date!.localeCompare(b.due_date!))
     .slice(0, 10);
 
   // Overdue tasks
+  const todayKey = formatDateKey(now.getFullYear(), now.getMonth(), now.getDate());
   const overdue = tasks.filter(
-    (t) => !t.completed && t.due_date && new Date(t.due_date) < new Date(formatDateKey(now.getFullYear(), now.getMonth(), now.getDate()))
+    (t) => !t.completed && t.due_date && t.due_date < todayKey
   );
 
   return (
@@ -155,7 +157,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
           </p>
         </div>
         <button
-          onClick={() => { setShowAddTask(true); setSelectedDate(formatDateKey(now.getFullYear(), now.getMonth(), now.getDate())); }}
+          onClick={() => { if (!selectedDate) setSelectedDate(formatDateKey(now.getFullYear(), now.getMonth(), now.getDate())); setShowAddTask(true); }}
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -205,7 +207,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
               return (
                 <button
                   key={day}
-                  onClick={() => { setSelectedDate(dateKey); setShowAddTask(true); }}
+                  onClick={() => setSelectedDate(dateKey)}
                   className={cn(
                     "h-11 flex flex-col items-center justify-center rounded-md relative transition-colors",
                     isToday && "bg-primary/10",
