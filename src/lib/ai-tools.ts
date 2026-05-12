@@ -249,3 +249,47 @@ export async function summarizeResource(
 
   return `Resource: "${resource.title}" (${resource.type})\nUploaded: ${resource.created_at}\n\nContent:\n${truncated}`;
 }
+
+// ─── Tool: List Resources ──────────────────────────────────────────────────────
+
+interface ListResourcesArgs {
+  limit?: number;
+  subject_id?: string;
+}
+
+export async function listResources(
+  supabase: SupabaseClient,
+  userId: string,
+  args: ListResourcesArgs
+): Promise<string> {
+  const { limit = 20, subject_id } = args;
+
+  let query = supabase
+    .from("resources")
+    .select("id, title, type, subject_id, created_at, content_text")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (subject_id) {
+    query = query.eq("subject_id", subject_id);
+  }
+
+  const { data: resources, error } = await query;
+
+  if (error) {
+    return `Failed to list resources: ${error.message}`;
+  }
+
+  if (!resources || resources.length === 0) {
+    return "No resources uploaded yet. The student should upload PDFs, documents, or text files via the Resource Library.";
+  }
+
+  const formatted = resources.map((r, i) => {
+    const hasContent = r.content_text && r.content_text.length > 0;
+    const status = hasContent ? "✓ indexed" : "⚠ not indexed";
+    return `${i + 1}. "${r.title}" (${r.type}) — uploaded ${r.created_at?.split("T")[0]} [${status}]`;
+  });
+
+  return `Found ${resources.length} uploaded resource${resources.length !== 1 ? "s" : ""}:\n\n${formatted.join("\n")}`;
+}

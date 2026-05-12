@@ -82,7 +82,11 @@ export async function POST(request: Request) {
 
   try {
     // 1. Upload to Supabase Storage
-    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+    // Sanitize filename: replace special chars with underscores, keep extension
+    const sanitizedName = file.name
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .replace(/_+/g, "_");
+    const filePath = `${user.id}/${Date.now()}-${sanitizedName}`;
     const { error: uploadError } = await supabase.storage
       .from("resources")
       .upload(filePath, file, {
@@ -97,8 +101,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Extract text content
-    const contentText = await extractText(file);
+    // 2. Extract text content and sanitize for Postgres (remove null bytes)
+    const rawText = await extractText(file);
+    const contentText = rawText ? rawText.replace(/\u0000/g, "") : "";
 
     // 3. Insert resource record
     const { data: resource, error: dbError } = await supabase

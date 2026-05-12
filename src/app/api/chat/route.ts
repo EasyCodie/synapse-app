@@ -6,6 +6,7 @@ import {
   createTask,
   getUpcomingDeadlines,
   summarizeResource,
+  listResources,
 } from "@/lib/ai-tools";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL ?? "gpt-5.4-nano-2026-03-17";
@@ -16,11 +17,13 @@ const SYSTEM_PROMPT = `You are Synapse AI, an intelligent study assistant for IB
 You have access to tools that let you:
 1. **search_resources** — semantic search across the student's uploaded content. Use when asking about specific TOPICS (e.g. "what do my notes say about mitosis?").
 2. **summarize_resource** — retrieve the FULL text of a specific uploaded document by title or ID. Use when the student asks to "summarize my latest upload", "summarize [title]", or references a specific document. This tool fetches from the database directly (no embedding search needed).
-3. **create_flashcards** — generate flashcard sets for spaced repetition study.
-4. **create_task** — add items to the student's task list with due dates and priorities.
-5. **get_upcoming_deadlines** — look up upcoming tasks and milestones.
+3. **list_resources** — list ALL uploaded resources with titles, types, and dates. Use when the student asks "what resources do I have?", "what have I uploaded?", "show my files", or wants an overview of their library.
+4. **create_flashcards** — generate flashcard sets for spaced repetition study.
+5. **create_task** — add items to the student's task list with due dates and priorities.
+6. **get_upcoming_deadlines** — look up upcoming tasks and milestones.
 
 CRITICAL TOOL ROUTING RULES:
+- When the student asks "what resources do I have?" or "what have I uploaded?" or "list my uploads" → use list_resources (NOT search_resources).
 - When the student says "summarize my latest upload" or "summarize [title]" → use summarize_resource (NOT search_resources).
 - When the student asks about a TOPIC (e.g. "explain AGEs" or "what is lipid peroxidation?") → use search_resources.
 - When the student says "create flashcards" → first use search_resources or summarize_resource to get content, then use create_flashcards.
@@ -156,6 +159,28 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           title_search: {
             type: "string",
             description: "Search by title (partial match). Leave empty to get the most recent upload.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_resources",
+      description:
+        "List all uploaded resources in the student's library. Returns titles, file types, upload dates, and indexing status. Use when the student asks 'what resources do I have?', 'what have I uploaded?', 'show my files', or wants an overview of their resource library.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: {
+            type: "number",
+            description: "Max resources to return (default 20)",
+          },
+          subject_id: {
+            type: "string",
+            description: "Optional subject UUID to filter by",
           },
         },
         additionalProperties: false,
@@ -347,6 +372,9 @@ export async function POST(request: Request) {
                     break;
                   case "summarize_resource":
                     result = await summarizeResource(supabase, user.id, toolArgs as Parameters<typeof summarizeResource>[2]);
+                    break;
+                  case "list_resources":
+                    result = await listResources(supabase, user.id, toolArgs as Parameters<typeof listResources>[2]);
                     break;
                   default:
                     result = `Unknown tool: ${toolName}`;
