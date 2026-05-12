@@ -9,12 +9,12 @@ export default async function CalendarPage() {
   const [tasksResult, milestonesResult] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*")
+      .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
       .eq("user_id", user.id)
       .order("due_date", { ascending: true }),
     supabase
       .from("milestones")
-      .select("*")
+      .select("id, title, date, type, subject_id, created_at")
       .eq("user_id", user.id)
       .order("date", { ascending: true }),
   ]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Search,
@@ -128,7 +129,11 @@ export default function SearchPage() {
 
       {/* Results */}
       {!loading && searched && results.length === 0 && (
-        <div className="text-center py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-16"
+        >
           <div className="w-12 h-12 rounded-xl bg-surface-1 border border-hairline flex items-center justify-center mx-auto mb-4">
             <Search className="w-6 h-6 text-ink-tertiary" />
           </div>
@@ -136,11 +141,15 @@ export default function SearchPage() {
           <p className="text-body-sm text-ink-tertiary mt-1">
             Try a broader term or upload more resources to expand your knowledge base.
           </p>
-        </div>
+        </motion.div>
       )}
 
       {!loading && results.length > 0 && (
-        <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-6"
+        >
           {/* Result count */}
           <div className="flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
@@ -168,14 +177,21 @@ export default function SearchPage() {
 
                 {/* Result cards */}
                 <div className="space-y-1.5">
-                  {group.map((result) => (
-                    <ResultCard key={result.id} result={result} />
+                  {group.map((result, i) => (
+                    <motion.div
+                      key={result.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04, duration: 0.2 }}
+                    >
+                      <ResultCard result={result} />
+                    </motion.div>
                   ))}
                 </div>
               </div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Empty state with suggestions */}

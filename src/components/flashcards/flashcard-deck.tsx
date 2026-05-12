@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   Trash2,
   Clock,
   ChevronRight,
   GraduationCap,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyMode } from "./study-mode";
@@ -32,6 +34,15 @@ interface FlashcardSet {
   masteredCount: number;
   avgConfidence: number;
 }
+
+const setCardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.05, duration: 0.25 },
+  }),
+};
 
 export function FlashcardDeck() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -100,6 +111,9 @@ export function FlashcardDeck() {
     (fc) => fc.next_review && new Date(fc.next_review) <= now
   ).length;
 
+  // Confidence distribution
+  const distribution = getConfidenceDistribution(flashcards);
+
   // Study mode
   if (studyingSet) {
     return (
@@ -132,25 +146,95 @@ export function FlashcardDeck() {
           </p>
         </div>
         {flashcards.length > 0 && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setStudyingSet({ id: "all", title: "All Cards", cards: flashcards, createdAt: new Date(), dueCount: totalDue, masteredCount: 0, avgConfidence: 0 })}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors duration-200"
           >
             <Play className="w-4 h-4" />
             Study All
-          </button>
+          </motion.button>
         )}
       </div>
 
-      {/* Sets grid */}
+      {/* Stats bar — confidence distribution + due badge */}
+      {flashcards.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 p-4 bg-surface-1 border border-hairline rounded-lg"
+        >
+          {/* Confidence distribution */}
+          <div className="flex-1">
+            <p className="text-caption text-ink-tertiary mb-2">Confidence Distribution</p>
+            <div className="flex items-center h-2 rounded-full overflow-hidden bg-surface-3">
+              {distribution.map((seg) => (
+                <motion.div
+                  key={seg.level}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${seg.percent}%` }}
+                  transition={{ duration: 0.5, delay: seg.level * 0.05 }}
+                  className={cn("h-full", seg.color)}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              {distribution.filter((s) => s.percent > 0).map((seg) => (
+                <span key={seg.level} className="flex items-center gap-1 text-[11px] text-ink-tertiary">
+                  <span className={cn("w-2 h-2 rounded-sm", seg.color)} />
+                  {seg.label} ({seg.count})
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Due for review */}
+          {totalDue > 0 && (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                const dueCards = flashcards.filter(
+                  (fc) => fc.next_review && new Date(fc.next_review) <= now
+                );
+                setStudyingSet({
+                  id: "due",
+                  title: "Due for Review",
+                  cards: dueCards,
+                  createdAt: new Date(),
+                  dueCount: dueCards.length,
+                  masteredCount: 0,
+                  avgConfidence: 0,
+                });
+              }}
+              className="flex items-center gap-3 px-4 py-3 bg-primary/8 border border-primary/15 rounded-lg hover:bg-primary/12 transition-colors duration-200 shrink-0"
+            >
+              <div className="w-9 h-9 rounded-md bg-primary/15 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-body-sm font-medium text-ink">{totalDue} due</p>
+                <p className="text-[11px] text-ink-subtle">Review now</p>
+              </div>
+            </motion.button>
+          )}
+        </motion.div>
+      )}
+
+      {/* Sets list */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 rounded-lg bg-surface-1 border border-hairline animate-pulse" />
+            <div key={i} className="h-16 rounded-lg bg-surface-1 border border-hairline animate-shimmer" />
           ))}
         </div>
       ) : sets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
           <div className="w-14 h-14 rounded-xl bg-surface-1 border border-hairline flex items-center justify-center mb-4">
             <GraduationCap className="w-7 h-7 text-ink-tertiary" />
           </div>
@@ -158,19 +242,26 @@ export function FlashcardDeck() {
           <p className="text-body-sm text-ink-tertiary mt-1 max-w-sm">
             Ask the AI to &ldquo;create flashcards&rdquo; from your uploads and they&apos;ll appear here as study sets
           </p>
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-3">
-          {sets.map((set) => (
-            <SetCard
+          {sets.map((set, i) => (
+            <motion.div
               key={set.id}
-              set={set}
-              expanded={expandedSetId === set.id}
-              onToggle={() => setExpandedSetId(expandedSetId === set.id ? null : set.id)}
-              onStudy={() => setStudyingSet(set)}
-              onDelete={handleDelete}
-              onDeleteSet={() => handleDeleteSet(set)}
-            />
+              custom={i}
+              variants={setCardVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <SetCard
+                set={set}
+                expanded={expandedSetId === set.id}
+                onToggle={() => setExpandedSetId(expandedSetId === set.id ? null : set.id)}
+                onStudy={() => setStudyingSet(set)}
+                onDelete={handleDelete}
+                onDeleteSet={() => handleDeleteSet(set)}
+              />
+            </motion.div>
           ))}
         </div>
       )}
@@ -200,23 +291,23 @@ function SetCard({
     : 0;
 
   return (
-    <div className="rounded-lg bg-surface-1 border border-hairline overflow-hidden">
+    <div className="rounded-lg bg-surface-1 border border-hairline overflow-hidden hover:border-hairline-strong transition-colors duration-200">
       {/* Set header — always visible */}
       <div
         onClick={onToggle}
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-2/50 transition-colors duration-200"
+        className="flex items-center gap-3 px-5 py-4 cursor-pointer"
       >
-        <ChevronRight
-          className={cn(
-            "w-4 h-4 text-ink-tertiary shrink-0 transition-transform duration-200",
-            expanded && "rotate-90"
-          )}
-        />
+        <motion.div
+          animate={{ rotate: expanded ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronRight className="w-4 h-4 text-ink-tertiary shrink-0" />
+        </motion.div>
 
         {/* Stacked card icon */}
-        <div className="relative w-8 h-8 shrink-0">
-          <div className="absolute inset-0 rounded bg-surface-3 border border-hairline translate-x-0.5 translate-y-0.5" />
-          <div className="absolute inset-0 rounded bg-surface-2 border border-hairline-strong flex items-center justify-center">
+        <div className="relative w-9 h-9 shrink-0">
+          <div className="absolute inset-0 rounded-md bg-surface-3 border border-hairline translate-x-0.5 translate-y-0.5" />
+          <div className="absolute inset-0 rounded-md bg-surface-2 border border-hairline-strong flex items-center justify-center">
             <span className="text-caption font-medium text-ink-muted">{set.cards.length}</span>
           </div>
         </div>
@@ -233,52 +324,78 @@ function SetCard({
                 {set.dueCount} due
               </span>
             )}
+            {set.masteredCount > 0 && (
+              <span className="text-caption text-semantic-success">
+                {set.masteredCount} mastered
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Confidence progress bar */}
+        {/* Confidence bar */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <div className="w-20 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${progressPercent}%` }}
+          <div className="w-24 h-2 rounded-full bg-surface-3 overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-primary"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.5 }}
             />
           </div>
-          <span className="text-caption text-ink-tertiary w-8 text-right">
+          <span className="text-caption text-ink-tertiary w-8 text-right tabular-nums">
             {Math.round(progressPercent)}%
           </span>
         </div>
 
         {/* Study button */}
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={(e) => { e.stopPropagation(); onStudy(); }}
           className="shrink-0 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-button hover:bg-primary/20 transition-colors duration-200"
         >
           Study
-        </button>
+        </motion.button>
       </div>
 
       {/* Expanded card list */}
-      {expanded && (
-        <div className="border-t border-hairline">
-          <div className="px-4 py-2 flex items-center justify-between bg-surface-2/30">
-            <span className="text-caption text-ink-subtle">
-              Created {formatDate(set.createdAt)}
-            </span>
-            <button
-              onClick={onDeleteSet}
-              className="text-caption text-ink-tertiary hover:text-red-400 transition-colors duration-200"
-            >
-              Delete set
-            </button>
-          </div>
-          <div className="divide-y divide-hairline">
-            {set.cards.map((card) => (
-              <CompactCardRow key={card.id} card={card} onDelete={onDelete} />
-            ))}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-hairline">
+              <div className="px-5 py-2.5 flex items-center justify-between bg-surface-2/30">
+                <span className="text-caption text-ink-subtle">
+                  Created {formatDate(set.createdAt)}
+                </span>
+                <button
+                  onClick={onDeleteSet}
+                  className="text-caption text-ink-tertiary hover:text-red-400 transition-colors duration-200 px-2 py-1 rounded hover:bg-surface-2"
+                >
+                  Delete set
+                </button>
+              </div>
+              <div className="divide-y divide-hairline">
+                {set.cards.map((card, i) => (
+                  <motion.div
+                    key={card.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                  >
+                    <CompactCardRow card={card} onDelete={onDelete} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -297,15 +414,15 @@ function CompactCardRow({
   return (
     <div
       onClick={() => setShowAnswer((prev) => !prev)}
-      className="group flex items-start gap-3 px-4 py-2.5 cursor-pointer hover:bg-surface-2/30 transition-colors duration-200"
+      className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-surface-2/30 transition-colors duration-200"
     >
-      {/* Confidence dots */}
+      {/* Confidence indicator */}
       <div className="flex items-center gap-0.5 pt-1.5 shrink-0">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
             className={cn(
-              "w-1 h-1 rounded-full",
+              "w-1.5 h-1.5 rounded-full transition-colors",
               i < card.confidence ? getConfidenceColor(card.confidence) : "bg-surface-3"
             )}
           />
@@ -313,10 +430,20 @@ function CompactCardRow({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-body-sm text-ink leading-snug truncate">{card.front}</p>
-        {showAnswer && (
-          <p className="text-body-sm text-ink-muted mt-1 leading-snug">{card.back}</p>
-        )}
+        <p className="text-body-sm text-ink leading-snug">{card.front}</p>
+        <AnimatePresence>
+          {showAnswer && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-body-sm text-ink-muted mt-1.5 leading-snug overflow-hidden"
+            >
+              {card.back}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Tags */}
@@ -329,9 +456,9 @@ function CompactCardRow({
       {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-2 text-ink-tertiary hover:text-red-400 transition-all shrink-0"
+        className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-surface-2 text-ink-tertiary hover:text-red-400 transition-all duration-200 shrink-0"
       >
-        <Trash2 className="w-3 h-3" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
   );
@@ -342,7 +469,6 @@ function CompactCardRow({
 function groupIntoSets(flashcards: Flashcard[]): FlashcardSet[] {
   if (flashcards.length === 0) return [];
 
-  // Sort by created_at descending
   const sorted = [...flashcards].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
@@ -354,7 +480,6 @@ function groupIntoSets(flashcards: Flashcard[]): FlashcardSet[] {
     const prevTime = new Date(sorted[i - 1].created_at).getTime();
     const currTime = new Date(sorted[i].created_at).getTime();
 
-    // Cards created within 60 seconds of each other belong to same set
     if (Math.abs(prevTime - currTime) <= 60_000) {
       currentSet.push(sorted[i]);
     } else {
@@ -373,7 +498,6 @@ function buildSet(cards: Flashcard[]): FlashcardSet {
   const masteredCount = cards.filter((c) => c.confidence >= 4).length;
   const avgConfidence = cards.reduce((sum, c) => sum + c.confidence, 0) / cards.length;
 
-  // Derive title from tags or first card content
   const allTags = cards.flatMap((c) => c.tags);
   const tagCounts = allTags.reduce<Record<string, number>>((acc, t) => {
     acc[t] = (acc[t] || 0) + 1;
@@ -396,6 +520,28 @@ function buildSet(cards: Flashcard[]): FlashcardSet {
     masteredCount,
     avgConfidence,
   };
+}
+
+function getConfidenceDistribution(flashcards: Flashcard[]) {
+  if (flashcards.length === 0) return [];
+  const levels = [
+    { level: 0, label: "New", color: "bg-ink-tertiary", count: 0 },
+    { level: 1, label: "Hard", color: "bg-red-500", count: 0 },
+    { level: 2, label: "Okay", color: "bg-yellow-500", count: 0 },
+    { level: 3, label: "Good", color: "bg-primary", count: 0 },
+    { level: 4, label: "Easy", color: "bg-primary-hover", count: 0 },
+    { level: 5, label: "Mastered", color: "bg-semantic-success", count: 0 },
+  ];
+
+  for (const fc of flashcards) {
+    const lvl = Math.min(Math.max(fc.confidence, 0), 5);
+    levels[lvl].count++;
+  }
+
+  return levels.map((l) => ({
+    ...l,
+    percent: (l.count / flashcards.length) * 100,
+  }));
 }
 
 function capitalise(str: string): string {

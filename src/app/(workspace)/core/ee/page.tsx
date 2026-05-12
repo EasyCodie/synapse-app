@@ -1,21 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
-import type { Database } from "@/types/database";
-
-type EERow = Database["public"]["Tables"]["ee_tracker"]["Row"];
 
 export default async function EEPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data: ee } = await supabase
     .from("ee_tracker")
-    .select("*")
+    .select("id, title, subject, supervisor, word_count, status, milestones")
     .eq("user_id", user.id)
     .single();
-
-  const ee: EERow | null = data;
 
   const milestones = [
     { id: "proposal", label: "Research Proposal", order: 1 },

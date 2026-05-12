@@ -10,7 +10,15 @@ const TYPE_LABELS: Record<string, string> = {
   web_clip: "Web clip",
   scan: "Scan",
   image: "Image",
-  other: "Other",
+  other: "Document",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  pdf: "bg-red-500/10 text-red-400",
+  web_clip: "bg-blue-500/10 text-blue-400",
+  scan: "bg-emerald-500/10 text-emerald-400",
+  image: "bg-purple-500/10 text-purple-400",
+  other: "bg-primary/10 text-primary",
 };
 
 export default async function ResourcesPage() {
@@ -35,6 +43,16 @@ export default async function ResourcesPage() {
     subjects.map((s) => [s.id, s.subject_name])
   );
 
+  const { data: indexedResources } = await supabase
+    .from("embeddings")
+    .select("source_id")
+    .eq("user_id", user.id)
+    .eq("source_type", "resource");
+
+  const indexedIds = new Set((indexedResources ?? []).map(e => e.source_id));
+
+  const indexedCount = resources.filter((r) => indexedIds.has(r.id)).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -42,6 +60,9 @@ export default async function ResourcesPage() {
           <h1 className="text-headline text-ink">Resource Library</h1>
           <p className="text-body-sm text-ink-subtle mt-1">
             {resources.length} resource{resources.length !== 1 ? "s" : ""}
+            {resources.length > 0 && (
+              <span className="text-ink-tertiary"> · {indexedCount} indexed for AI search</span>
+            )}
           </p>
         </div>
         <UploadResource subjects={subjects as Array<{ id: string; subject_name: string }>} />
@@ -55,74 +76,78 @@ export default async function ResourcesPage() {
         />
       ) : (
         <div className="space-y-2">
-          {resources.map((resource) => (
-            <div
-              key={resource.id}
-              className="flex items-center gap-4 px-5 py-4 bg-surface-1 border border-hairline rounded-lg hover:border-hairline-strong transition-all duration-200"
-            >
-              <div className="w-8 h-8 rounded-md bg-surface-3 flex items-center justify-center shrink-0">
-                <ResourceIcon type={resource.type} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-body-sm text-ink truncate">
-                  {resource.title}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-caption text-ink-subtle">
-                    {TYPE_LABELS[resource.type] ?? resource.type}
+          {resources.map((resource, i) => {
+            const isIndexed = indexedIds.has(resource.id);
+            return (
+              <div
+                key={resource.id}
+                className="group flex items-center gap-4 px-5 py-4 bg-surface-1 border border-hairline rounded-lg hover:border-hairline-strong transition-all duration-200"
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                {/* File type badge */}
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${TYPE_COLORS[resource.type] ?? TYPE_COLORS.other}`}>
+                  <span className="text-caption font-semibold">
+                    {TYPE_LABELS[resource.type]?.slice(0, 3).toUpperCase() ?? "DOC"}
                   </span>
-                  {resource.subject_id && subjectMap[resource.subject_id] && (
-                    <>
-                      <span className="text-ink-subtle">·</span>
-                      <span className="text-caption text-ink-subtle">
-                        {subjectMap[resource.subject_id]}
-                      </span>
-                    </>
-                  )}
-                  {resource.file_size && (
-                    <>
-                      <span className="text-ink-subtle">·</span>
-                      <span className="text-caption text-ink-subtle">
-                        {formatBytes(resource.file_size as number)}
-                      </span>
-                    </>
-                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-body-sm text-ink truncate">{resource.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-caption text-ink-tertiary">
+                      {TYPE_LABELS[resource.type] ?? resource.type}
+                    </span>
+                    {resource.subject_id && subjectMap[resource.subject_id] && (
+                      <>
+                        <span className="text-ink-tertiary">·</span>
+                        <span className="text-caption text-ink-subtle">
+                          {subjectMap[resource.subject_id]}
+                        </span>
+                      </>
+                    )}
+                    {resource.file_size && (
+                      <>
+                        <span className="text-ink-tertiary">·</span>
+                        <span className="text-caption text-ink-tertiary">
+                          {formatBytes(resource.file_size as number)}
+                        </span>
+                      </>
+                    )}
+                    {/* Indexed status */}
+                    <span className="text-ink-tertiary">·</span>
+                    <span className={`text-caption ${isIndexed ? "text-semantic-success" : "text-ink-tertiary"}`}>
+                      {isIndexed ? "Indexed" : "Not indexed"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="hidden sm:flex gap-1.5 shrink-0">
+                  {(resource.tags as string[]).slice(0, 2).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="text-caption px-2 py-0.5 bg-surface-2 text-ink-subtle rounded"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Date */}
+                <span className="text-caption text-ink-tertiary shrink-0 tabular-nums hidden md:inline">
+                  {formatRelativeDate(resource.created_at)}
+                </span>
+
+                {/* Delete — revealed on hover */}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <DeleteResourceButton resourceId={resource.id} />
                 </div>
               </div>
-              <div className="flex gap-1.5 shrink-0">
-                {(resource.tags as string[]).slice(0, 2).map((tag: string) => (
-                  <span
-                    key={tag}
-                    className="text-caption px-2 py-0.5 bg-surface-3 text-ink-subtle rounded-pill"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <span className="text-caption text-ink-subtle shrink-0">
-                {new Date(resource.created_at).toLocaleDateString()}
-              </span>
-              <DeleteResourceButton resourceId={resource.id} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
-  );
-}
-
-function ResourceIcon({ type }: { type: string }) {
-  const icons: Record<string, string> = {
-    pdf: "PDF",
-    web_clip: "WEB",
-    scan: "SCN",
-    image: "IMG",
-    other: "DOC",
-  };
-  return (
-    <span className="text-caption font-medium text-ink-subtle">
-      {icons[type] ?? "DOC"}
-    </span>
   );
 }
 
@@ -130,4 +155,17 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }

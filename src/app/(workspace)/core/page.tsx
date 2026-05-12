@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
+import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
 
 export default async function CorePage() {
   const user = await requireUser();
@@ -58,13 +59,13 @@ export default async function CorePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <AnimatedList className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {coreModules.map((mod) => (
-          <Link
-            key={mod.href}
-            href={mod.href}
-            className="bg-surface-1 border border-hairline rounded-lg p-6 hover:border-hairline-strong hover:bg-surface-2 transition-all duration-200 group space-y-3"
-          >
+          <AnimatedItem key={mod.href}>
+            <Link
+              href={mod.href}
+              className="block bg-surface-1 border border-hairline rounded-lg p-6 hover:border-hairline-strong hover:bg-surface-2 transition-all duration-200 group space-y-3"
+            >
             <div className="flex items-start justify-between">
               <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
                 <span className="text-caption font-semibold text-primary">{mod.abbr}</span>
@@ -93,8 +94,9 @@ export default async function CorePage() {
               </div>
             )}
           </Link>
+          </AnimatedItem>
         ))}
-      </div>
+      </AnimatedList>
     </div>
   );
 }

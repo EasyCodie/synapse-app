@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("flashcards")
-    .select("*")
+    .select("id, subject_id, resource_id, front, back, tags, confidence, next_review, created_at")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (subjectId) {
     query = query.eq("subject_id", subjectId);
@@ -74,7 +75,7 @@ export async function PATCH(request: NextRequest) {
     })
     .eq("id", id)
     .eq("user_id", user.id)
-    .select()
+    .select("id, subject_id, resource_id, front, back, tags, confidence, next_review, created_at")
     .single();
 
   if (error) {

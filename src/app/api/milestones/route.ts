@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("milestones")
-    .select("*")
+    .select("id, title, date, type, subject_id, created_at")
     .eq("user_id", user.id)
     .order("date", { ascending: true });
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       type,
       subject_id: subject_id || null,
     })
-    .select()
+    .select("id, title, date, type, subject_id, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

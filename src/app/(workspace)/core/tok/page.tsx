@@ -8,7 +8,7 @@ export default async function TOKPage() {
 
   const { data: tok } = await supabase
     .from("tok_tracker")
-    .select("*")
+    .select("id, essay_title, prescribed_title, exhibition_objects, status")
     .eq("user_id", user.id)
     .single();
 

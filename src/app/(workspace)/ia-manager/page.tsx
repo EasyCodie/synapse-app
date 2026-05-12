@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { ClipboardList } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
 
 const STATUS_COLUMNS = [
   { key: "not_started", label: "Not Started" },
@@ -47,11 +48,11 @@ export default async function IAManagerPage() {
           description="Internal Assessments are auto-generated from your subjects during onboarding."
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <AnimatedList className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {STATUS_COLUMNS.map((col) => {
             const colIAs = ias.filter((ia) => ia.status === col.key);
             return (
-              <div key={col.key} className="space-y-3">
+              <AnimatedItem key={col.key} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-eyebrow text-ink-subtle">{col.label}</p>
                   <span className="text-caption text-ink-tertiary">{colIAs.length}</span>
@@ -102,10 +103,10 @@ export default async function IAManagerPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </AnimatedItem>
             );
           })}
-        </div>
+        </AnimatedList>
       )}
     </div>
   );

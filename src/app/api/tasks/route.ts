@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("tasks")
-    .select("*")
+    .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
     .eq("user_id", user.id)
-    .order("due_date", { ascending: true });
+    .order("due_date", { ascending: true })
+    .limit(500);
 
   if (completed === "true") query = query.eq("completed", true);
   if (completed === "false") query = query.eq("completed", false);
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       subject_id: subject_id || null,
       completed: false,
     })
-    .select()
+    .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -80,7 +81,7 @@ export async function PATCH(request: NextRequest) {
     .update(updates)
     .eq("id", id)
     .eq("user_id", user.id)
-    .select()
+    .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
