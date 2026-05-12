@@ -38,7 +38,7 @@ export default async function SubjectsPage() {
             <Link
               key={subject.id}
               href={`/subjects/${subject.id}`}
-              className="bg-surface-1 border border-hairline rounded-lg p-5 hover:border-hairline-strong hover:bg-surface-2 transition-colors group"
+              className="bg-surface-1 border border-hairline rounded-lg p-6 hover:border-hairline-strong hover:bg-surface-2 transition-all duration-200 group"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-8 h-8 rounded-md bg-surface-3 flex items-center justify-center">

@@ -34,7 +34,7 @@ export function DeleteResourceButton({ resourceId }: { resourceId: string }) {
         handleDelete();
       }}
       disabled={deleting}
-      className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-3 transition-colors"
+      className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-3 transition-colors duration-200"
       title="Delete resource"
     >
       {deleting ? (

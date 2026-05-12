@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { BookOpen, FileText, CheckSquare, Archive } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
@@ -56,9 +57,9 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <a href="/subjects" className="text-body-sm text-ink-subtle hover:text-ink transition-colors">
+            <Link href="/subjects" className="text-body-sm text-ink-subtle hover:text-ink transition-colors duration-200">
               Subjects
-            </a>
+            </Link>
             <span className="text-ink-tertiary">/</span>
             <span className="text-body-sm text-ink">{subject.subject_name}</span>
           </div>
@@ -193,9 +194,9 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
                   </div>
                 </div>
               )}
-              <a href="/ia-manager" className="text-body-sm text-primary hover:text-primary-hover transition-colors">
+              <Link href="/ia-manager" className="text-body-sm text-primary hover:text-primary-hover transition-colors duration-200">
                 View in IA Manager →
-              </a>
+              </Link>
             </div>
           )}
         </TabsContent>

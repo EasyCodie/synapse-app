@@ -158,7 +158,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
         </div>
         <button
           onClick={() => { if (!selectedDate) setSelectedDate(formatDateKey(now.getFullYear(), now.getMonth(), now.getDate())); setShowAddTask(true); }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors duration-200"
         >
           <Plus className="w-4 h-4" />
           Add Task
@@ -167,17 +167,17 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="lg:col-span-2 bg-surface-1 border border-hairline rounded-lg p-5">
+        <div className="lg:col-span-2 bg-surface-1 border border-hairline rounded-lg p-6">
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-card-title text-ink">
               {MONTH_NAMES[viewMonth]} {viewYear}
             </h2>
             <div className="flex items-center gap-1">
-              <button onClick={prevMonth} className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle transition-colors">
+              <button onClick={prevMonth} className="flex items-center justify-center w-9 h-9 rounded-md hover:bg-surface-2 text-ink-subtle transition-colors duration-200 active:scale-95">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle transition-colors">
+              <button onClick={nextMonth} className="flex items-center justify-center w-9 h-9 rounded-md hover:bg-surface-2 text-ink-subtle transition-colors duration-200 active:scale-95">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -209,7 +209,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
                   key={day}
                   onClick={() => setSelectedDate(dateKey)}
                   className={cn(
-                    "h-11 flex flex-col items-center justify-center rounded-md relative transition-colors",
+                    "h-11 flex flex-col items-center justify-center rounded-md relative transition-colors duration-200",
                     isToday && "bg-primary/10",
                     isSelected && "ring-1 ring-primary",
                     !isToday && !isSelected && "hover:bg-surface-2"
@@ -249,7 +249,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
         <div className="space-y-4">
           {/* Overdue */}
           {overdue.length > 0 && (
-            <div className="bg-surface-1 border border-red-500/20 rounded-lg p-4">
+            <div className="bg-surface-1 border border-red-500/20 rounded-lg p-6">
               <h3 className="text-body-sm font-medium text-red-400 mb-2">Overdue</h3>
               <div className="space-y-1.5">
                 {overdue.map((task) => (
@@ -260,7 +260,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
           )}
 
           {/* Upcoming */}
-          <div className="bg-surface-1 border border-hairline rounded-lg p-4">
+          <div className="bg-surface-1 border border-hairline rounded-lg p-6">
             <h3 className="text-body-sm font-medium text-ink mb-3">Upcoming</h3>
             {upcoming.length === 0 ? (
               <p className="text-caption text-ink-subtle py-4 text-center">
@@ -277,7 +277,7 @@ export function CalendarView({ initialTasks, initialMilestones }: CalendarViewPr
 
           {/* Milestones */}
           {milestones.length > 0 && (
-            <div className="bg-surface-1 border border-hairline rounded-lg p-4">
+            <div className="bg-surface-1 border border-hairline rounded-lg p-6">
               <h3 className="text-body-sm font-medium text-ink mb-3">Milestones</h3>
               <div className="space-y-2">
                 {milestones.slice(0, 5).map((m) => (
@@ -326,17 +326,24 @@ function TaskRow({
   const config = PRIORITY_CONFIG[task.priority];
 
   return (
-    <div className="group flex items-center gap-2.5 py-1.5">
+    <div className="group flex items-center gap-2 py-1">
       <button
         onClick={() => onToggle(task.id, !task.completed)}
         className={cn(
-          "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+          "w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-all duration-200",
+          task.completed
+            ? "bg-primary/10"
+            : "hover:bg-surface-2"
+        )}
+      >
+        <div className={cn(
+          "w-4 h-4 rounded border flex items-center justify-center transition-colors duration-200",
           task.completed
             ? "bg-primary border-primary"
             : "border-hairline-strong hover:border-primary"
-        )}
-      >
-        {task.completed && <Check className="w-3 h-3 text-on-primary" />}
+        )}>
+          {task.completed && <Check className="w-3 h-3 text-on-primary" />}
+        </div>
       </button>
       <div className="flex-1 min-w-0">
         <p className={cn(
@@ -354,9 +361,9 @@ function TaskRow({
       )}
       <button
         onClick={() => onDelete(task.id)}
-        className="opacity-0 group-hover:opacity-100 p-0.5 text-ink-tertiary hover:text-red-400 transition-all"
+        className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-8 h-8 rounded-md text-ink-tertiary hover:text-red-400 hover:bg-surface-2 transition-all duration-200"
       >
-        <Trash2 className="w-3 h-3" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
   );
@@ -433,7 +440,7 @@ function AddTaskModal({
                   type="button"
                   onClick={() => setPriority(p)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-caption border transition-colors",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-caption border transition-colors duration-200",
                     priority === p
                       ? "border-primary bg-primary/10 text-ink"
                       : "border-hairline text-ink-subtle hover:border-hairline-strong"
@@ -451,7 +458,7 @@ function AddTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-md text-button text-ink-subtle hover:bg-surface-2 transition-colors"
+              className="px-4 py-2 rounded-md text-button text-ink-subtle hover:bg-surface-2 transition-colors duration-200"
             >
               Cancel
             </button>

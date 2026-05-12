@@ -46,7 +46,7 @@ export default async function WorkspaceLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-6">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-12">
           {children}
         </div>
       </main>

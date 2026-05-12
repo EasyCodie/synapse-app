@@ -62,7 +62,7 @@ export default async function IAManagerPage() {
                     return (
                       <div
                         key={ia.id}
-                        className="bg-surface-1 border border-hairline rounded-lg p-3 space-y-2 hover:border-hairline-strong transition-colors cursor-pointer"
+                        className="bg-surface-1 border border-hairline rounded-lg p-4 space-y-2 hover:border-hairline-strong transition-all duration-200 cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-1">
                           <p className="text-body-sm text-ink leading-snug">

@@ -73,7 +73,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Subjects"
           value={subjects.length}
@@ -103,10 +103,10 @@ export default async function DashboardPage() {
       {/* Content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming tasks */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-5">
+        <div className="bg-surface-1 border border-hairline rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-card-title text-ink">Upcoming Tasks</h2>
-            <Link href="/calendar" className="text-caption text-primary hover:text-primary-hover transition-colors">
+            <Link href="/calendar" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
               View all
             </Link>
           </div>
@@ -137,10 +137,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* IA Progress */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-5">
+        <div className="bg-surface-1 border border-hairline rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-card-title text-ink">IA Progress</h2>
-            <Link href="/ia-manager" className="text-caption text-primary hover:text-primary-hover transition-colors">
+            <Link href="/ia-manager" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
               View all
             </Link>
           </div>
@@ -169,10 +169,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* Subjects overview */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-5 lg:col-span-2">
+        <div className="bg-surface-1 border border-hairline rounded-lg p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-card-title text-ink">Your Subjects</h2>
-            <Link href="/subjects" className="text-caption text-primary hover:text-primary-hover transition-colors">
+            <Link href="/subjects" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
               View all
             </Link>
           </div>
@@ -214,7 +214,7 @@ function StatCard({
   sublabel?: string;
 }) {
   return (
-    <div className="bg-surface-1 border border-hairline rounded-lg p-4">
+    <div className="bg-surface-1 border border-hairline rounded-lg p-6">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="w-4 h-4 text-ink-tertiary" />
         <span className="text-caption text-ink-subtle">{label}</span>

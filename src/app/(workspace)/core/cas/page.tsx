@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
+import Link from "next/link";
 import { Heart } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import type { Database } from "@/types/database";
@@ -35,7 +36,7 @@ export default async function CASPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <a href="/core" className="text-body-sm text-ink-subtle hover:text-ink transition-colors">The Core</a>
+          <Link href="/core" className="text-body-sm text-ink-subtle hover:text-ink transition-colors duration-200">The Core</Link>
           <span className="text-ink-tertiary">/</span>
           <span className="text-body-sm text-ink">CAS</span>
         </div>
@@ -70,7 +71,7 @@ export default async function CASPage() {
             return (
               <div
                 key={exp.id}
-                className="flex items-start gap-3 px-4 py-3 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors"
+                className="flex items-start gap-3 px-4 py-3 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors duration-200"
               >
                 <span className={`text-caption px-2 py-0.5 rounded-pill shrink-0 mt-0.5 ${cfg.bg} ${cfg.color}`}>
                   {cfg.label}

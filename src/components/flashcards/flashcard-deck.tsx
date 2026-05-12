@@ -134,7 +134,7 @@ export function FlashcardDeck() {
         {flashcards.length > 0 && (
           <button
             onClick={() => setStudyingSet({ id: "all", title: "All Cards", cards: flashcards, createdAt: new Date(), dueCount: totalDue, masteredCount: 0, avgConfidence: 0 })}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md text-button hover:bg-primary-hover transition-colors duration-200"
           >
             <Play className="w-4 h-4" />
             Study All
@@ -204,7 +204,7 @@ function SetCard({
       {/* Set header — always visible */}
       <div
         onClick={onToggle}
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-2/50 transition-colors"
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-2/50 transition-colors duration-200"
       >
         <ChevronRight
           className={cn(
@@ -252,7 +252,7 @@ function SetCard({
         {/* Study button */}
         <button
           onClick={(e) => { e.stopPropagation(); onStudy(); }}
-          className="shrink-0 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-button hover:bg-primary/20 transition-colors"
+          className="shrink-0 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-button hover:bg-primary/20 transition-colors duration-200"
         >
           Study
         </button>
@@ -267,7 +267,7 @@ function SetCard({
             </span>
             <button
               onClick={onDeleteSet}
-              className="text-caption text-ink-tertiary hover:text-red-400 transition-colors"
+              className="text-caption text-ink-tertiary hover:text-red-400 transition-colors duration-200"
             >
               Delete set
             </button>
@@ -297,7 +297,7 @@ function CompactCardRow({
   return (
     <div
       onClick={() => setShowAnswer((prev) => !prev)}
-      className="group flex items-start gap-3 px-4 py-2.5 cursor-pointer hover:bg-surface-2/30 transition-colors"
+      className="group flex items-start gap-3 px-4 py-2.5 cursor-pointer hover:bg-surface-2/30 transition-colors duration-200"
     >
       {/* Confidence dots */}
       <div className="flex items-center gap-0.5 pt-1.5 shrink-0">

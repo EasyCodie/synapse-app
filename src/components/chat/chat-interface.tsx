@@ -301,7 +301,7 @@ export function ChatInterface() {
           </div>
           <button
             onClick={handleClear}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors duration-200"
           >
             <Trash2 className="w-3 h-3" />
             Clear
@@ -337,7 +337,7 @@ export function ChatInterface() {
                 <button
                   key={starter.label}
                   onClick={() => handleSend(starter.message)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-1 border border-hairline text-left hover:border-hairline-strong hover:bg-surface-2 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-1 border border-hairline text-left hover:border-hairline-strong hover:bg-surface-2 transition-colors duration-200"
                 >
                   <starter.icon className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-body-sm text-ink-muted">

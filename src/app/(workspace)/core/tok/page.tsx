@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
+import Link from "next/link";
 
 export default async function TOKPage() {
   const user = await requireUser();
@@ -19,7 +20,7 @@ export default async function TOKPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <a href="/core" className="text-body-sm text-ink-subtle hover:text-ink transition-colors">The Core</a>
+          <Link href="/core" className="text-body-sm text-ink-subtle hover:text-ink transition-colors duration-200">The Core</Link>
           <span className="text-ink-tertiary">/</span>
           <span className="text-body-sm text-ink">Theory of Knowledge</span>
         </div>

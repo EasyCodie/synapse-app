@@ -115,7 +115,7 @@ export default function SearchPage() {
             "bg-surface-1 border border-hairline text-ink text-body",
             "placeholder:text-ink-tertiary",
             "focus:border-hairline-strong focus:outline-2 focus:outline-primary/50 focus:outline-offset-0",
-            "transition-colors"
+            "transition-colors duration-200"
           )}
           autoFocus
         />
@@ -200,7 +200,7 @@ export default function SearchPage() {
                 <button
                   key={q}
                   onClick={() => handleSuggestion(q)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-1 border border-hairline text-body-sm text-ink-muted hover:text-ink hover:border-hairline-strong transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-1 border border-hairline text-body-sm text-ink-muted hover:text-ink hover:border-hairline-strong transition-colors duration-200"
                 >
                   <Search className="w-3 h-3 text-ink-tertiary" />
                   {q}
@@ -232,7 +232,7 @@ function ResultCard({ result }: { result: SearchResult }) {
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3 px-4 py-3 rounded-lg bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/30 transition-colors"
+      className="group flex items-start gap-3 px-4 py-3 rounded-lg bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/30 transition-colors duration-200"
     >
       {/* Icon */}
       <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5", config.bg)}>

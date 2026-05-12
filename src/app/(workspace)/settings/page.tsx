@@ -64,7 +64,7 @@ export default async function SettingsPage() {
         <form action="/auth/signout" method="POST">
           <button
             type="submit"
-            className="text-body-sm text-destructive hover:text-destructive/80 transition-colors"
+            className="text-body-sm text-destructive hover:text-destructive/80 transition-colors duration-200"
           >
             Sign out
           </button>

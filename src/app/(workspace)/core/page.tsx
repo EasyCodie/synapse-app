@@ -63,7 +63,7 @@ export default async function CorePage() {
           <Link
             key={mod.href}
             href={mod.href}
-            className="bg-surface-1 border border-hairline rounded-lg p-5 hover:border-hairline-strong hover:bg-surface-2 transition-colors group space-y-3"
+            className="bg-surface-1 border border-hairline rounded-lg p-6 hover:border-hairline-strong hover:bg-surface-2 transition-all duration-200 group space-y-3"
           >
             <div className="flex items-start justify-between">
               <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">

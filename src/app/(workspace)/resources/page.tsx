@@ -58,7 +58,7 @@ export default async function ResourcesPage() {
           {resources.map((resource) => (
             <div
               key={resource.id}
-              className="flex items-center gap-4 px-4 py-3 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors"
+              className="flex items-center gap-4 px-5 py-4 bg-surface-1 border border-hairline rounded-lg hover:border-hairline-strong transition-all duration-200"
             >
               <div className="w-8 h-8 rounded-md bg-surface-3 flex items-center justify-center shrink-0">
                 <ResourceIcon type={resource.type} />

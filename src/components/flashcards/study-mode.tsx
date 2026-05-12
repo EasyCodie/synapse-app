@@ -89,7 +89,7 @@ export function StudyMode({ cards, onRate, onClose }: StudyModeProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors"
+            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors duration-200"
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,14 +101,14 @@ export function StudyMode({ cards, onRate, onClose }: StudyModeProps) {
           <button
             onClick={goToPrev}
             disabled={currentIndex === 0}
-            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={goToNext}
             disabled={currentIndex === cards.length - 1}
-            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

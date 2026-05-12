@@ -109,7 +109,7 @@ export function UploadResource({ subjects }: UploadResourceProps) {
         onDrop={handleDrop}
         onClick={() => fileRef.current?.click()}
         className={cn(
-          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors duration-200",
           dragOver
             ? "border-primary bg-primary/5"
             : file
