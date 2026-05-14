@@ -28,7 +28,7 @@ export default async function ResourcesPage() {
   const [resourcesResult, subjectsResult] = await Promise.all([
     supabase
       .from("resources")
-      .select("id, title, type, tags, subject_id, created_at, file_size, url")
+      .select("id, title, type, tags, subject_id, created_at, file_size")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -43,13 +43,17 @@ export default async function ResourcesPage() {
     subjects.map((s) => [s.id, s.subject_name])
   );
 
-  const { data: indexedResources } = await supabase
-    .from("embeddings")
-    .select("source_id")
-    .eq("user_id", user.id)
-    .eq("source_type", "resource");
+  const resourceIds = resources.map((resource) => resource.id);
+  const { data: indexedResources } = resourceIds.length > 0
+    ? await supabase
+        .from("embeddings")
+        .select("source_id")
+        .eq("user_id", user.id)
+        .eq("source_type", "resource")
+        .in("source_id", resourceIds)
+    : { data: [] };
 
-  const indexedIds = new Set((indexedResources ?? []).map(e => e.source_id));
+  const indexedIds = new Set((indexedResources ?? []).map((e) => e.source_id));
 
   const indexedCount = resources.filter((r) => indexedIds.has(r.id)).length;
 

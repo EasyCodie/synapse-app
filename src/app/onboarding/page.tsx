@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { generateAllWorkspaces, type SubjectSelection } from "@/lib/workspace-generator";
@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectSelection[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
   const groups = ibSubjects as SubjectGroup[];
 
@@ -68,31 +69,62 @@ export default function OnboardingPage() {
   const totalCount = selectedSubjects.length;
   const isValidSelection = hlCount >= 3 && slCount >= 3 && totalCount === 6;
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function redirectIfComplete() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_complete")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (mounted && profile?.onboarding_complete) {
+        router.replace("/dashboard");
+      }
+    }
+
+    redirectIfComplete();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
   async function handleFinish() {
-    if (!isValidSelection) return;
+    if (!isValidSelection || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      savingRef.current = false;
+      setSaving(false);
       router.push("/login");
       return;
     }
 
-    // Upsert profile with exam session
-    const { error: profileError } = await supabase
+    const { data: existingProfile, error: existingProfileError } = await supabase
       .from("profiles")
-      .upsert({
-        id: user.id,
-        exam_session: examSession,
-        onboarding_complete: true,
-        full_name: user.user_metadata?.["full_name"] ?? null,
-      });
+      .select("onboarding_complete")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    if (profileError) {
-      setError(profileError.message);
+    if (existingProfileError) {
+      setError(existingProfileError.message);
+      savingRef.current = false;
       setSaving(false);
+      return;
+    }
+
+    if (existingProfile?.onboarding_complete) {
+      router.replace("/dashboard");
       return;
     }
 
@@ -107,29 +139,59 @@ export default function OnboardingPage() {
 
     const { data: insertedSubjects, error: subjectsError } = await supabase
       .from("user_subjects")
-      .insert(subjectRows)
-      .select();
+      .upsert(subjectRows, { onConflict: "user_id,subject_name" })
+      .select("id, subject_name");
 
     if (subjectsError) {
       setError(subjectsError.message);
+      savingRef.current = false;
       setSaving(false);
       return;
     }
 
+    const subjectIdByName = new Map(
+      (insertedSubjects ?? []).map((subject) => [subject.subject_name, subject.id])
+    );
+
     // Generate and store workspace structures
     const workspaces = generateAllWorkspaces(selectedSubjects);
-    const workspaceRows = workspaces.map((ws, idx) => ({
+    const workspaceRows = workspaces.map((ws) => ({
       user_id: user.id,
-      subject_id: insertedSubjects?.[idx]?.id ?? null,
+      subject_id: subjectIdByName.get(ws.subjectName) ?? null,
       structure: ws as unknown as Record<string, unknown>,
     }));
 
+    if (workspaceRows.some((row) => !row.subject_id)) {
+      setError("Could not match every selected subject to a workspace.");
+      savingRef.current = false;
+      setSaving(false);
+      return;
+    }
+
     const { error: workspaceError } = await supabase
       .from("workspaces")
-      .insert(workspaceRows);
+      .upsert(workspaceRows, { onConflict: "user_id,subject_id" });
 
     if (workspaceError) {
       setError(workspaceError.message);
+      savingRef.current = false;
+      setSaving(false);
+      return;
+    }
+
+    // Mark onboarding complete only after subjects and workspaces are ready.
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        exam_session: examSession,
+        onboarding_complete: true,
+        full_name: user.user_metadata?.["full_name"] ?? null,
+      });
+
+    if (profileError) {
+      setError(profileError.message);
+      savingRef.current = false;
       setSaving(false);
       return;
     }

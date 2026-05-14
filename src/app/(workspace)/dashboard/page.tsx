@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import { getWorkspaceProfile, requireUser } from "@/lib/auth";
 import { format, differenceInDays } from "date-fns";
 import Link from "next/link";
 import {
@@ -19,46 +19,53 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [profileResult, subjectsResult, tasksResult, iasResult, flashcardsResult] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, exam_session")
-        .eq("id", user.id)
-        .single(),
-      supabase
-        .from("user_subjects")
-        .select("id, subject_name, level")
-        .eq("user_id", user.id)
-        .order("subject_group"),
-      supabase
-        .from("tasks")
-        .select("id, title, due_date, priority, completed, subject_id")
-        .eq("user_id", user.id)
-        .eq("completed", false)
-        .order("due_date", { ascending: true })
-        .limit(5),
-      supabase
-        .from("internal_assessments")
-        .select("id, title, status, due_date, subject_id")
-        .eq("user_id", user.id)
-        .order("due_date", { ascending: true }),
-      supabase
-        .from("flashcards")
-        .select("id, confidence, next_review")
-        .eq("user_id", user.id),
-    ]);
+  const now = new Date();
 
-  const profile = profileResult.data;
+  const [
+    profile,
+    subjectsResult,
+    tasksResult,
+    iasResult,
+    flashcardsCountResult,
+    dueFlashcardsResult,
+  ] = await Promise.all([
+    getWorkspaceProfile(user.id),
+    supabase
+      .from("user_subjects")
+      .select("id, subject_name, level")
+      .eq("user_id", user.id)
+      .order("subject_group"),
+    supabase
+      .from("tasks")
+      .select("id, title, due_date, priority, completed, subject_id", {
+        count: "exact",
+      })
+      .eq("user_id", user.id)
+      .eq("completed", false)
+      .order("due_date", { ascending: true })
+      .limit(5),
+    supabase
+      .from("internal_assessments")
+      .select("id, title, status, due_date, subject_id")
+      .eq("user_id", user.id)
+      .order("due_date", { ascending: true }),
+    supabase
+      .from("flashcards")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id),
+    supabase
+      .from("flashcards")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .lte("next_review", now.toISOString()),
+  ]);
+
   const subjects = subjectsResult.data ?? [];
   const tasks = tasksResult.data ?? [];
   const ias = iasResult.data ?? [];
-  const flashcards = flashcardsResult.data ?? [];
-
-  const now = new Date();
-  const dueFlashcards = flashcards.filter(
-    (fc) => fc.next_review && new Date(fc.next_review) <= now
-  ).length;
+  const openTaskCount = tasksResult.count ?? tasks.length;
+  const flashcardCount = flashcardsCountResult.count ?? 0;
+  const dueFlashcards = dueFlashcardsResult.count ?? 0;
 
   const greeting = getGreeting();
   const today = format(now, "EEEE, MMMM d");
@@ -78,8 +85,8 @@ export default async function DashboardPage() {
           <p className="text-body-sm text-ink-subtle mt-1">
             {profile?.exam_session && <>{profile.exam_session} · </>}
             {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
-            {tasks.length > 0 && (
-              <> · <span className="text-ink-muted">{tasks.length} task{tasks.length !== 1 ? "s" : ""} due</span></>
+            {openTaskCount > 0 && (
+              <> · <span className="text-ink-muted">{openTaskCount} task{openTaskCount !== 1 ? "s" : ""} due</span></>
             )}
           </p>
         </div>
@@ -139,11 +146,11 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Open Tasks"
-          value={tasks.length}
+          value={openTaskCount}
           icon={CheckSquare}
-          sublabel={tasks.length > 0 ? "need attention" : "all clear"}
+          sublabel={openTaskCount > 0 ? "need attention" : "all clear"}
           href="/calendar"
-          accent={tasks.length > 3}
+          accent={openTaskCount > 3}
         />
         <StatCard
           label="IAs"
@@ -154,7 +161,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Flashcards"
-          value={flashcards.length}
+          value={flashcardCount}
           icon={GraduationCap}
           sublabel={dueFlashcards > 0 ? `${dueFlashcards} due for review` : "all reviewed"}
           href="/flashcards"

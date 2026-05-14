@@ -124,9 +124,13 @@ export function ChatInterface() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const historyLoadStartedRef = useRef(false);
 
   // Load chat history on mount
   useEffect(() => {
+    if (historyLoadStartedRef.current) return;
+    historyLoadStartedRef.current = true;
+
     async function loadHistory() {
       try {
         const res = await fetch("/api/chat/history");

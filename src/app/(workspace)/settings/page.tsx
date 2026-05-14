@@ -1,21 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import { getWorkspaceProfile, requireUser } from "@/lib/auth";
 
 export default async function SettingsPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, exam_session")
-    .eq("id", user.id)
-    .single();
+  const [profile, subjectsResult] = await Promise.all([
+    getWorkspaceProfile(user.id),
+    supabase
+      .from("user_subjects")
+      .select("id, subject_name, level, subject_group")
+      .eq("user_id", user.id)
+      .order("subject_group"),
+  ]);
 
-  const { data: subjects } = await supabase
-    .from("user_subjects")
-    .select("id, subject_name, level, subject_group")
-    .eq("user_id", user.id)
-    .order("subject_group");
+  const subjects = subjectsResult.data ?? [];
 
   return (
     <div className="space-y-6 max-w-xl">

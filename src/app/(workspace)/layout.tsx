@@ -1,27 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
+import { getWorkspaceProfile, requireUser } from "@/lib/auth";
 
 export default async function WorkspaceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Check onboarding status
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_complete, full_name")
-    .eq("id", user.id)
-    .single();
+  const user = await requireUser();
+  const profile = await getWorkspaceProfile(user.id);
 
   if (!profile?.onboarding_complete) {
     redirect("/onboarding");
