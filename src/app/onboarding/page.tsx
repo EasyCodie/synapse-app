@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { SubjectSelection } from "@/lib/workspace-generator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,8 +20,10 @@ interface SubjectGroup {
   }>;
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isResetMode = searchParams.get("reset") === "1";
   const [step, setStep] = useState<Step>("session");
   const [examSession, setExamSession] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectSelection[]>([]);
@@ -69,6 +71,9 @@ export default function OnboardingPage() {
   const isValidSelection = hlCount >= 3 && slCount >= 3 && totalCount === 6;
 
   useEffect(() => {
+    // After a workspace reset, skip the redirect — let the user re-onboard
+    if (isResetMode) return;
+
     let mounted = true;
 
     async function redirectIfComplete() {
@@ -88,7 +93,7 @@ export default function OnboardingPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [router, isResetMode]);
 
   async function handleFinish() {
     if (!isValidSelection || savingRef.current) return;
@@ -315,5 +320,13 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
   );
 }

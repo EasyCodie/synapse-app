@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/local/client";
 import { getWorkspaceProfile, requireUser } from "@/lib/auth";
+import { WorkspaceResetDialog } from "@/components/settings/workspace-reset-dialog";
 
 type SettingsSubject = {
   id: string;
@@ -64,7 +65,18 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {/* Danger zone */}
+      {/* Workspace Reset */}
+      <section className="bg-surface-1 border border-destructive/30 rounded-lg p-5 space-y-3">
+        <h2 className="text-card-title text-ink">Reset Workspace</h2>
+        <p className="text-body-sm text-ink-subtle leading-relaxed">
+          Start fresh by choosing new subjects and rebuilding your workspace
+          from scratch. This will permanently delete all your notes, tasks,
+          resources, chat history, flashcards, and IA progress.
+        </p>
+        <WorkspaceResetDialog />
+      </section>
+
+      {/* Session */}
       <section className="bg-surface-1 border border-hairline rounded-lg p-5 space-y-3">
         <h2 className="text-card-title text-ink">Session</h2>
         <form action="/auth/signout" method="POST">
