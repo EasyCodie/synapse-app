@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/local/client";
+import { ensureCurriculumScaffold } from "@/lib/curriculum";
 import { generateAllWorkspaces, type SubjectSelection } from "@/lib/workspace-generator";
 
 export async function GET() {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
 
   const subjectRows = selectedSubjects.map((subject) => ({
     user_id: user.id,
+    subject_key: subject.id,
     subject_name: subject.name,
     subject_group: subject.group,
     level: subject.level,
@@ -97,6 +99,8 @@ export async function POST(request: Request) {
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
+
+  await ensureCurriculumScaffold(user.id);
 
   return NextResponse.json({ success: true });
 }

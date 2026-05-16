@@ -29,6 +29,7 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
+import { normalizeMarkdownMath } from "@/lib/markdown-math";
 import { cn } from "@/lib/utils";
 
 const MARKDOWN_REMARK_PLUGINS = [remarkMath];
@@ -880,7 +881,7 @@ export function ChatInterface() {
                     remarkPlugins={MARKDOWN_REMARK_PLUGINS}
                     rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
                   >
-                    {streamingText}
+                    {normalizeMarkdownMath(streamingText)}
                   </ReactMarkdown>
                   <span className="inline-block w-[3px] h-[18px] bg-primary/70 rounded-full animate-pulse ml-0.5 align-middle" />
                 </div>
@@ -988,6 +989,7 @@ export function ChatInterface() {
             placeholder="Ask about your resources..."
             rows={1}
             className="w-full resize-none pl-12 pr-12 py-3.5 bg-surface-1 border border-hairline rounded-lg text-body-sm text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-hairline-strong transition-colors duration-200 min-h-[48px] max-h-[160px]"
+            suppressHydrationWarning
             style={{
               height: "auto",
               overflow: input.split("\n").length > 4 ? "auto" : "hidden",
@@ -1013,6 +1015,7 @@ export function ChatInterface() {
             )}
             aria-label="Attach PDF, DOCX, or TXT"
             title="Attach PDF, DOCX, or TXT"
+            suppressHydrationWarning
           >
             <Paperclip className="w-4 h-4" />
           </motion.button>
@@ -1029,6 +1032,7 @@ export function ChatInterface() {
                 : "bg-transparent text-ink-tertiary"
             )}
             aria-label="Send message"
+            suppressHydrationWarning
           >
             <ArrowUp className="w-4 h-4" />
           </motion.button>
@@ -1311,7 +1315,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
               remarkPlugins={MARKDOWN_REMARK_PLUGINS}
               rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
             >
-              {message.content}
+              {normalizeMarkdownMath(message.content)}
             </ReactMarkdown>
           </div>
         )}

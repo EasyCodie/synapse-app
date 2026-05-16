@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
+import { ensureCurriculumScaffold } from "@/lib/curriculum";
 import Link from "next/link";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
 
 export default async function CorePage() {
   const user = await requireUser();
+  await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
   const [eeResult, tokResult, casResult] = await Promise.all([

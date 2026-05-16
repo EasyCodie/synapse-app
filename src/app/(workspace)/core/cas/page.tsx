@@ -1,21 +1,15 @@
-import { createClient } from "@/lib/local/client";
-import { requireUser } from "@/lib/auth";
 import Link from "next/link";
-import { Heart } from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
-
-type CASEType = "creativity" | "activity" | "service";
-type CASExperience = {
-  id: string;
-  title: string;
-  type: CASEType;
-  description: string | null;
-  status: string;
-  created_at: string;
-};
+import {
+  CASEditor,
+  type CASExperience,
+} from "@/components/curriculum/curriculum-controls";
+import { requireUser } from "@/lib/auth";
+import { ensureCurriculumScaffold } from "@/lib/curriculum";
+import { createClient } from "@/lib/local/client";
 
 export default async function CASPage() {
   const user = await requireUser();
+  await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
   const { data } = await local
@@ -26,72 +20,41 @@ export default async function CASPage() {
 
   const cas = (data ?? []) as CASExperience[];
 
-  const creativity = cas.filter((e) => e.type === "creativity");
-  const activity = cas.filter((e) => e.type === "activity");
-  const service = cas.filter((e) => e.type === "service");
-
-  const typeConfig = {
-    creativity: { label: "Creativity", color: "text-primary", bg: "bg-primary/10" },
-    activity: { label: "Activity", color: "text-semantic-success", bg: "bg-semantic-success/10" },
-    service: { label: "Service", color: "text-ink-muted", bg: "bg-surface-3" },
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Link href="/core" className="text-body-sm text-ink-subtle hover:text-ink transition-colors duration-200">The Core</Link>
+        <div className="mb-1 flex items-center gap-2">
+          <Link
+            href="/core"
+            className="text-body-sm text-ink-subtle transition-colors duration-200 hover:text-ink"
+          >
+            The Core
+          </Link>
           <span className="text-ink-tertiary">/</span>
           <span className="text-body-sm text-ink">CAS</span>
         </div>
         <h1 className="text-headline text-ink">Creativity, Activity, Service</h1>
-        <p className="text-body-sm text-ink-subtle mt-1">{cas.length} experience{cas.length !== 1 ? "s" : ""} logged</p>
+        <p className="mt-1 text-body-sm text-ink-subtle">
+          Log experiences, update progress, and keep reflection notes close to
+          the programme requirements.
+        </p>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        {(["creativity", "activity", "service"] as const).map((type) => {
-          const count = type === "creativity" ? creativity.length : type === "activity" ? activity.length : service.length;
-          const cfg = typeConfig[type];
-          return (
-            <div key={type} className="bg-surface-1 border border-hairline rounded-lg p-4 text-center">
-              <p className={`text-headline ${cfg.color}`}>{count}</p>
-              <p className="text-caption text-ink-subtle mt-1">{cfg.label}</p>
-            </div>
-          );
-        })}
+        {(["creativity", "activity", "service"] as const).map((type) => (
+          <div
+            key={type}
+            className="rounded-lg border border-hairline bg-surface-1 p-4 text-center"
+          >
+            <p className="text-headline text-primary">
+              {cas.filter((experience) => experience.type === type).length}
+            </p>
+            <p className="mt-1 text-caption capitalize text-ink-subtle">{type}</p>
+          </div>
+        ))}
       </div>
 
-      {cas.length === 0 ? (
-        <EmptyState
-          icon={Heart}
-          title="No CAS experiences yet"
-          description="Log your Creativity, Activity, and Service experiences here."
-        />
-      ) : (
-        <div className="space-y-2">
-          {cas.map((exp) => {
-            const cfg = typeConfig[exp.type];
-            return (
-              <div
-                key={exp.id}
-                className="flex items-start gap-3 px-4 py-3 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors duration-200"
-              >
-                <span className={`text-caption px-2 py-0.5 rounded-pill shrink-0 mt-0.5 ${cfg.bg} ${cfg.color}`}>
-                  {cfg.label}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-body-sm text-ink">{exp.title}</p>
-                  {exp.description && (
-                    <p className="text-caption text-ink-subtle mt-0.5 truncate">{exp.description}</p>
-                  )}
-                </div>
-                <span className="text-caption text-ink-tertiary capitalize shrink-0">{exp.status}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <CASEditor experiences={cas} />
     </div>
   );
 }
