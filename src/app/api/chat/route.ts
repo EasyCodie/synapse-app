@@ -7,7 +7,17 @@ import {
   getUpcomingDeadlines,
   summarizeResource,
   listResources,
+  deleteTask,
+  updateTask,
+  listTasks,
+  deleteFlashcards,
+  getMySubjects,
+  getIAStatus,
+  getSyllabusProgress,
+  listNotes,
 } from "@/lib/ai-tools";
+import { buildSystemPrompt } from "@/lib/ai-system-prompt";
+import { AI_TOOLS } from "@/lib/ai-tool-schemas";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL ?? "gpt-5.4-nano-2026-03-17";
 const MAX_ATTACHMENT_COUNT = 5;
@@ -91,184 +101,8 @@ function buildAttachmentContext(resources: AttachedResource[]) {
     .join("\n\n---\n\n");
 }
 
-// ─── System Prompt (placed at start for serial position primacy) ────────────────
-const SYSTEM_PROMPT = `You are Synapse AI, an intelligent study assistant for IB Diploma Programme students. You help students understand their notes, resources, and course material.
-
-You have access to tools that let you:
-1. **search_resources** — semantic search across the student's uploaded content. Use when asking about specific TOPICS (e.g. "what do my notes say about mitosis?").
-2. **summarize_resource** — retrieve the FULL text of a specific uploaded document by title or ID. Use when the student asks to "summarize my latest upload", "summarize [title]", or references a specific document. This tool fetches from the database directly (no embedding search needed).
-3. **list_resources** — list ALL uploaded resources with titles, types, and dates. Use when the student asks "what resources do I have?", "what have I uploaded?", "show my files", or wants an overview of their library.
-4. **create_flashcards** — generate flashcard sets for spaced repetition study.
-5. **create_task** — add items to the student's task list with due dates and priorities.
-6. **get_upcoming_deadlines** — look up upcoming tasks and milestones.
-
-CRITICAL TOOL ROUTING RULES:
-- When the student asks "what resources do I have?" or "what have I uploaded?" or "list my uploads" → use list_resources (NOT search_resources).
-- When the student says "summarize my latest upload" or "summarize [title]" → use summarize_resource (NOT search_resources).
-- When the student asks about a TOPIC (e.g. "explain AGEs" or "what is lipid peroxidation?") → use search_resources.
-- When the student says "create flashcards" → first use search_resources or summarize_resource to get content, then use create_flashcards.
-- When citing information from search results, use [Source N] notation.
-- When the latest user message includes attached resource context, prioritize those attached resources over broad search and cite them as [Attached Resource N].
-- Be concise, clear, and educational in your responses.
-- Use markdown formatting for structure (headings, bullet points, bold) when helpful.
-- When creating flashcards, make them specific, testable, and pedagogically sound.
-- When creating tasks, infer reasonable due dates and priorities from context.
-- If you can't find relevant content via search, suggest the student upload materials on that topic.`;
-
-// ─── Tool Schemas ───────────────────────────────────────────────────────────────
-const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "search_resources",
-      description:
-        "Search the student's uploaded resources, notes, and study materials using semantic similarity. Use this whenever the student asks about academic content.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query — what to look for in the student's resources",
-          },
-          limit: {
-            type: "number",
-            description: "Max results to return (default 6)",
-          },
-        },
-        required: ["query"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "create_flashcards",
-      description:
-        "Create flashcards for spaced repetition study. Generate multiple cards with clear front (question/prompt) and back (answer) pairs.",
-      parameters: {
-        type: "object",
-        properties: {
-          flashcards: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                front: { type: "string", description: "Question or prompt" },
-                back: { type: "string", description: "Answer or explanation" },
-                tags: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Topic tags for organization",
-                },
-              },
-              required: ["front", "back"],
-            },
-            description: "Array of flashcard objects to create",
-          },
-          subject_id: {
-            type: "string",
-            description: "Optional subject UUID to associate flashcards with",
-          },
-        },
-        required: ["flashcards"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "create_task",
-      description:
-        "Create a task or reminder on the student's task list. Use when the student asks to be reminded of something or wants to track a deadline.",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "Task title" },
-          description: { type: "string", description: "Optional details" },
-          due_date: {
-            type: "string",
-            description: "Due date in YYYY-MM-DD format",
-          },
-          priority: {
-            type: "string",
-            enum: ["low", "medium", "high", "urgent"],
-            description: "Task priority level",
-          },
-          subject_id: {
-            type: "string",
-            description: "Optional subject UUID",
-          },
-        },
-        required: ["title"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_upcoming_deadlines",
-      description:
-        "Check the student's upcoming tasks and milestones. Use when they ask about what's due soon or need schedule overview.",
-      parameters: {
-        type: "object",
-        properties: {
-          days_ahead: {
-            type: "number",
-            description: "How many days ahead to look (default 7)",
-          },
-        },
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "summarize_resource",
-      description:
-        "Retrieve the full text content of an uploaded document directly from the database. Use this when the student says 'summarize my latest upload', 'summarize [title]', or wants to read a specific document. If no resource_id or title_search is provided, returns the MOST RECENTLY uploaded resource.",
-      parameters: {
-        type: "object",
-        properties: {
-          resource_id: {
-            type: "string",
-            description: "UUID of the resource (if known)",
-          },
-          title_search: {
-            type: "string",
-            description: "Search by title (partial match). Leave empty to get the most recent upload.",
-          },
-        },
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "list_resources",
-      description:
-        "List all uploaded resources in the student's library. Returns titles, file types, upload dates, and indexing status. Use when the student asks 'what resources do I have?', 'what have I uploaded?', 'show my files', or wants an overview of their resource library.",
-      parameters: {
-        type: "object",
-        properties: {
-          limit: {
-            type: "number",
-            description: "Max resources to return (default 20)",
-          },
-          subject_id: {
-            type: "string",
-            description: "Optional subject UUID to filter by",
-          },
-        },
-        additionalProperties: false,
-      },
-    },
-  },
-];
+// System prompt is now built dynamically via buildSystemPrompt() at request time.
+// Tool schemas are imported from src/lib/ai-tool-schemas.ts as AI_TOOLS.
 
 // ─── Route Handler ──────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
@@ -435,9 +269,12 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false })
       .limit(21); // 20 history + the message we just inserted
 
+    // Build dynamic system prompt with student context
+    const systemPrompt = await buildSystemPrompt(user.id, local);
+
     // Build messages array: system prompt (primacy) + history + new message (recency)
     const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
     ];
 
     // Add history in chronological order (skip the message we just inserted since we'll add it at the end)
@@ -473,7 +310,7 @@ export async function POST(request: Request) {
 
           const currentMessages = [...chatMessages];
           let loopCount = 0;
-          const maxLoops = 5;
+          const maxLoops = 8;
 
           while (loopCount < maxLoops) {
             loopCount++;
@@ -481,7 +318,7 @@ export async function POST(request: Request) {
             const response = await openai.chat.completions.create({
               model: CHAT_MODEL,
               messages: currentMessages,
-              tools: TOOLS,
+              tools: AI_TOOLS,
               temperature: 0.3,
               max_completion_tokens: 4096,
               stream: true,
@@ -592,6 +429,30 @@ export async function POST(request: Request) {
                     break;
                   case "list_resources":
                     result = await listResources(local, user.id, toolArgs as Parameters<typeof listResources>[2]);
+                    break;
+                  case "delete_task":
+                    result = await deleteTask(local, user.id, toolArgs as Parameters<typeof deleteTask>[2]);
+                    break;
+                  case "update_task":
+                    result = await updateTask(local, user.id, toolArgs as Parameters<typeof updateTask>[2]);
+                    break;
+                  case "list_tasks":
+                    result = await listTasks(local, user.id, toolArgs as Parameters<typeof listTasks>[2]);
+                    break;
+                  case "delete_flashcards":
+                    result = await deleteFlashcards(local, user.id, toolArgs as Parameters<typeof deleteFlashcards>[2]);
+                    break;
+                  case "get_my_subjects":
+                    result = await getMySubjects(local, user.id);
+                    break;
+                  case "get_ia_status":
+                    result = await getIAStatus(local, user.id, toolArgs as Parameters<typeof getIAStatus>[2]);
+                    break;
+                  case "get_syllabus_progress":
+                    result = await getSyllabusProgress(local, user.id, toolArgs as Parameters<typeof getSyllabusProgress>[2]);
+                    break;
+                  case "list_notes":
+                    result = await listNotes(local, user.id, toolArgs as Parameters<typeof listNotes>[2]);
                     break;
                   default:
                     result = `Unknown tool: ${toolName}`;

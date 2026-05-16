@@ -28,6 +28,11 @@ import {
   Paperclip,
   X,
   AlertCircle,
+  ListTodo,
+  GraduationCap,
+  ClipboardCheck,
+  BarChart3,
+  StickyNote,
 } from "lucide-react";
 import { normalizeMarkdownMath } from "@/lib/markdown-math";
 import { cn } from "@/lib/utils";
@@ -116,9 +121,17 @@ const TOOL_DISPLAY: Record<string, { icon: typeof Search; label: string }> = {
   search_resources: { icon: Search, label: "Searching resources" },
   list_resources: { icon: BookOpen, label: "Listing resources" },
   create_flashcards: { icon: Layers, label: "Creating flashcards" },
+  delete_flashcards: { icon: Trash2, label: "Deleting flashcards" },
   create_task: { icon: CheckSquare, label: "Creating task" },
+  update_task: { icon: Pencil, label: "Updating task" },
+  delete_task: { icon: Trash2, label: "Deleting task" },
+  list_tasks: { icon: ListTodo, label: "Listing tasks" },
   get_upcoming_deadlines: { icon: Calendar, label: "Checking deadlines" },
   summarize_resource: { icon: FileText, label: "Reading resource" },
+  get_my_subjects: { icon: GraduationCap, label: "Checking subjects" },
+  get_ia_status: { icon: BarChart3, label: "Checking IA status" },
+  get_syllabus_progress: { icon: ClipboardCheck, label: "Checking syllabus" },
+  list_notes: { icon: StickyNote, label: "Listing notes" },
 };
 
 function createLocalConversationTitle(message: string) {
