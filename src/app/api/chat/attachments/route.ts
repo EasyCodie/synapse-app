@@ -1,14 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 import {
+  CHAT_ATTACHMENT_ALLOWED_MIME_TYPES,
+  CHAT_ATTACHMENT_MAX_BYTES,
   extractResourceText,
   getResourceType,
   isAllowedMimeType,
   RESOURCE_BUCKET,
-  RESOURCE_LIBRARY_ALLOWED_MIME_TYPES,
   sanitizeExtractedText,
   sanitizeResourceFilename,
 } from "@/lib/resource-upload";
-import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -23,31 +24,30 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const subjectId = formData.get("subject_id") as string | null;
-  const title = (formData.get("title") as string) || file?.name || "Untitled";
+  const title = ((formData.get("title") as string | null) || file?.name || "Untitled").trim();
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!isAllowedMimeType(file.type, RESOURCE_LIBRARY_ALLOWED_MIME_TYPES)) {
+  if (!isAllowedMimeType(file.type, CHAT_ATTACHMENT_ALLOWED_MIME_TYPES)) {
     return NextResponse.json(
-      { error: `Unsupported file type: ${file.type}` },
+      { error: "Unsupported file type. Attach PDF, DOCX, or TXT files only." },
       { status: 400 }
     );
   }
 
-  if (file.size > 50 * 1024 * 1024) {
+  if (file.size > CHAT_ATTACHMENT_MAX_BYTES) {
     return NextResponse.json(
-      { error: "File too large (max 50MB)" },
+      { error: "File too large (max 10MB)" },
       { status: 400 }
     );
   }
 
   try {
-    // 1. Upload to Supabase Storage
-    // Sanitize filename: replace special chars with underscores, keep extension
-    const sanitizedName = sanitizeResourceFilename(file.name);
-    const filePath = `${user.id}/${Date.now()}-${sanitizedName}`;
+    const sanitizedName = sanitizeResourceFilename(file.name || title);
+    const filePath = `${user.id}/chat/${Date.now()}-${sanitizedName}`;
+
     const { error: uploadError } = await supabase.storage
       .from(RESOURCE_BUCKET)
       .upload(filePath, file, {
@@ -62,11 +62,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Extract text content and sanitize for Postgres (remove null bytes)
     const rawText = await extractResourceText(file);
     const contentText = rawText ? sanitizeExtractedText(rawText) : "";
 
-    // 3. Insert resource record
     const { data: resource, error: dbError } = await supabase
       .from("resources")
       .insert({
@@ -77,23 +75,20 @@ export async function POST(request: Request) {
         file_size: file.size,
         subject_id: subjectId || null,
         content_text: contentText || null,
-        tags: [],
+        tags: ["chat_attachment"],
       })
-      .select("id")
+      .select("id, title, type, file_path, file_size, created_at")
       .single();
 
-    if (dbError) {
-      // Cleanup storage on DB failure
+    if (dbError || !resource) {
       await supabase.storage.from(RESOURCE_BUCKET).remove([filePath]);
       return NextResponse.json(
-        { error: `Database error: ${dbError.message}` },
+        { error: `Database error: ${dbError?.message ?? "Failed to create resource"}` },
         { status: 500 }
       );
     }
 
-    // 4. Generate embeddings if we have text content
-    if (contentText && contentText.length > 10 && resource) {
-      // Fire and forget — don't block the response
+    if (contentText.length > 10) {
       fetch(new URL("/api/embeddings", request.url).toString(), {
         method: "POST",
         headers: {
@@ -104,21 +99,29 @@ export async function POST(request: Request) {
           source_type: "resource",
           source_id: resource.id,
           content_text: contentText,
-          metadata: { title, file_type: file.type },
+          metadata: {
+            title,
+            file_type: file.type,
+            uploaded_from: "chat_attachment",
+          },
         }),
       }).catch(() => {
-        // Embedding generation is best-effort
+        // Embedding generation is best-effort; direct attachment grounding uses content_text immediately.
       });
     }
 
     return NextResponse.json({
       success: true,
-      resource: { id: resource?.id, title, file_path: filePath },
+      resource: {
+        ...resource,
+        has_text: contentText.length > 0,
+        content_excerpt: contentText.slice(0, 500),
+      },
     });
   } catch (err) {
-    console.error("Upload error:", err);
+    console.error("Chat attachment upload error:", err);
     return NextResponse.json(
-      { error: "Upload processing failed" },
+      { error: "Attachment processing failed" },
       { status: 500 }
     );
   }

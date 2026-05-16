@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
+import { extractPdfText } from "@/lib/extract-pdf";
 
 const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 50;
@@ -74,12 +75,7 @@ export async function POST(request: Request) {
 
     if (resource.type === "pdf") {
       try {
-        const { PDFParse } = await import("pdf-parse");
-        const data = new Uint8Array(arrayBuffer);
-        const parser = new PDFParse({ data });
-        const result = await parser.getText();
-        await parser.destroy();
-        contentText = result.text;
+        contentText = await extractPdfText(arrayBuffer);
       } catch (err) {
         console.error("PDF re-extraction failed:", err);
         return NextResponse.json(

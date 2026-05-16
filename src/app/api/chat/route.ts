@@ -10,6 +10,86 @@ import {
 } from "@/lib/ai-tools";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL ?? "gpt-5.4-nano-2026-03-17";
+const MAX_ATTACHMENT_COUNT = 5;
+const MAX_ATTACHMENT_CHARS = 6000;
+
+function createConversationTitle(message: string) {
+  const compact = message.replace(/\s+/g, " ").trim();
+  if (!compact) return "New chat";
+
+  const words = compact.split(" ").slice(0, 8).join(" ");
+  return words.length > 80 ? `${words.slice(0, 77)}...` : words;
+}
+
+async function generateConversationTitle(openai: OpenAI, message: string) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Generate a concise chat title for an IB student conversation. Return only the title, no quotes, no punctuation at the end. Use 3-6 words.",
+        },
+        { role: "user", content: message.slice(0, 1200) },
+      ],
+      temperature: 0.2,
+      max_completion_tokens: 24,
+    });
+
+    const title = completion.choices[0]?.message?.content
+      ?.replace(/^['\"]|['\"]$/g, "")
+      .replace(/[.!?]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!title) return createConversationTitle(message);
+    return title.length > 80 ? `${title.slice(0, 77)}...` : title;
+  } catch (err) {
+    console.error("Conversation title generation failed:", err);
+    return createConversationTitle(message);
+  }
+}
+
+function parseAttachmentResourceIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, MAX_ATTACHMENT_COUNT);
+}
+
+interface AttachedResource {
+  id: string;
+  title: string;
+  type: string;
+  content_text: string | null;
+  created_at: string;
+}
+
+function buildAttachmentContext(resources: AttachedResource[]) {
+  if (resources.length === 0) return null;
+
+  return resources
+    .map((resource, index) => {
+      const content = resource.content_text?.trim()
+        ? resource.content_text.trim().slice(0, MAX_ATTACHMENT_CHARS)
+        : "[No extracted text is available for this resource yet.]";
+
+      const truncated =
+        resource.content_text && resource.content_text.length > MAX_ATTACHMENT_CHARS
+          ? `${content}\n[...attachment truncated for length]`
+          : content;
+
+      return `[Attached Resource ${index + 1}]\nID: ${resource.id}\nTitle: ${resource.title}\nType: ${resource.type}\nUploaded: ${resource.created_at}\nContent:\n${truncated}`;
+    })
+    .join("\n\n---\n\n");
+}
 
 // ─── System Prompt (placed at start for serial position primacy) ────────────────
 const SYSTEM_PROMPT = `You are Synapse AI, an intelligent study assistant for IB Diploma Programme students. You help students understand their notes, resources, and course material.
@@ -28,6 +108,7 @@ CRITICAL TOOL ROUTING RULES:
 - When the student asks about a TOPIC (e.g. "explain AGEs" or "what is lipid peroxidation?") → use search_resources.
 - When the student says "create flashcards" → first use search_resources or summarize_resource to get content, then use create_flashcards.
 - When citing information from search results, use [Source N] notation.
+- When the latest user message includes attached resource context, prioritize those attached resources over broad search and cite them as [Attached Resource N].
 - Be concise, clear, and educational in your responses.
 - Use markdown formatting for structure (headings, bullet points, bold) when helpful.
 - When creating flashcards, make them specific, testable, and pedagogically sound.
@@ -202,7 +283,17 @@ export async function POST(request: Request) {
     });
   }
 
-  const { message } = (await request.json()) as { message: string };
+  const body = (await request.json()) as {
+    message?: unknown;
+    conversation_id?: unknown;
+    attachment_resource_ids?: unknown;
+  };
+  const message = typeof body.message === "string" ? body.message : "";
+  const requestedConversationId =
+    typeof body.conversation_id === "string" ? body.conversation_id : null;
+  const attachmentResourceIds = parseAttachmentResourceIds(
+    body.attachment_resource_ids
+  );
 
   if (!message || typeof message !== "string") {
     return new Response(JSON.stringify({ error: "Message required" }), {
@@ -213,18 +304,134 @@ export async function POST(request: Request) {
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+    let attachedResources: AttachedResource[] = [];
+    if (attachmentResourceIds.length > 0) {
+      const { data, error } = await supabase
+        .from("resources")
+        .select("id, title, type, content_text, created_at")
+        .eq("user_id", user.id)
+        .in("id", attachmentResourceIds);
+
+      if (error) {
+        console.error("Attachment resource load error:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to load attachments" }),
+          { status: 500 }
+        );
+      }
+
+      const resourcesById = new Map(
+        ((data ?? []) as AttachedResource[]).map((resource) => [
+          resource.id,
+          resource,
+        ])
+      );
+      attachedResources = attachmentResourceIds
+        .map((id) => resourcesById.get(id))
+        .filter((resource): resource is AttachedResource => Boolean(resource));
+
+      if (attachedResources.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "No accessible attachments found" }),
+          { status: 400 }
+        );
+      }
+    }
+
+    let conversation: {
+      id: string;
+      title: string;
+      created_at: string;
+      updated_at: string;
+      last_message_at: string;
+    } | null = null;
+
+    if (requestedConversationId) {
+      const { data, error } = await supabase
+        .from("chat_conversations")
+        .select("id, title, created_at, updated_at, last_message_at")
+        .eq("id", requestedConversationId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (error || !data) {
+        return new Response(JSON.stringify({ error: "Conversation not found" }), {
+          status: 404,
+        });
+      }
+
+      conversation = data;
+    } else {
+      const generatedTitle = await generateConversationTitle(openai, message);
+      const { data, error } = await supabase
+        .from("chat_conversations")
+        .insert({
+          user_id: user.id,
+          title: generatedTitle,
+        })
+        .select("id, title, created_at, updated_at, last_message_at")
+        .single();
+
+      if (error || !data) {
+        console.error("Conversation create error:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to create conversation" }),
+          { status: 500 }
+        );
+      }
+
+      conversation = data;
+    }
+
+    if (!conversation) {
+      return new Response(
+        JSON.stringify({ error: "Failed to load conversation" }),
+        { status: 500 }
+      );
+    }
+
+    const conversationId = conversation.id;
+    const now = new Date().toISOString();
+    const conversationTitle =
+      conversation.title === "New chat"
+        ? await generateConversationTitle(openai, message)
+        : conversation.title;
+    const attachmentContext = buildAttachmentContext(attachedResources);
+    const userMessageForModel = attachmentContext
+      ? `${message}\n\nAttached resource context for this turn:\n${attachmentContext}`
+      : message;
+    const attachmentSources = attachedResources.map((resource, index) => ({
+      index: index + 1,
+      source_type: "attachment_resource",
+      source_id: resource.id,
+      title: resource.title,
+    }));
+
     // 1. Save user message to DB
     await supabase.from("chat_messages").insert({
       user_id: user.id,
+      conversation_id: conversationId,
       role: "user",
       content: message,
+      sources: attachmentSources.length > 0 ? attachmentSources : null,
     });
+
+    await supabase
+      .from("chat_conversations")
+      .update({
+        title: conversationTitle,
+        updated_at: now,
+        last_message_at: now,
+      })
+      .eq("id", conversationId)
+      .eq("user_id", user.id);
 
     // 2. Load chat history from DB (last 20 for LLM context)
     const { data: historyRows } = await supabase
       .from("chat_messages")
       .select("role, content")
       .eq("user_id", user.id)
+      .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .limit(21); // 20 history + the message we just inserted
 
@@ -245,7 +452,7 @@ export async function POST(request: Request) {
     }
 
     // Add the new user message at the end (recency)
-    chatMessages.push({ role: "user", content: message });
+    chatMessages.push({ role: "user", content: userMessageForModel });
 
     // 3. Execute with tool calling using manual loop (for streaming support)
     const encoder = new TextEncoder();
@@ -254,6 +461,16 @@ export async function POST(request: Request) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "conversation",
+                id: conversationId,
+                title: conversationTitle,
+              })}\n\n`
+            )
+          );
+
           const currentMessages = [...chatMessages];
           let loopCount = 0;
           const maxLoops = 5;
@@ -410,10 +627,20 @@ export async function POST(request: Request) {
             // Save assistant message to DB
             await supabase.from("chat_messages").insert({
               user_id: user.id,
+              conversation_id: conversationId,
               role: "assistant",
               content: fullContent,
               tool_calls: toolCallsLog.length > 0 ? toolCallsLog : null,
             });
+
+            await supabase
+              .from("chat_conversations")
+              .update({
+                updated_at: new Date().toISOString(),
+                last_message_at: new Date().toISOString(),
+              })
+              .eq("id", conversationId)
+              .eq("user_id", user.id);
 
             // Send done event
             controller.enqueue(
