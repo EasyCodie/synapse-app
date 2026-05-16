@@ -1,11 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
+import { rmSync } from "fs";
+import { resolve } from "path";
 
-const e2eEmail = process.env["E2E_USER_EMAIL"];
-const e2ePassword = process.env["E2E_USER_PASSWORD"];
-const hasE2EAccount = Boolean(e2eEmail && e2ePassword);
-const onboardingEmail = process.env["E2E_ONBOARDING_EMAIL"];
-const onboardingPassword = process.env["E2E_ONBOARDING_PASSWORD"];
-const hasOnboardingAccount = Boolean(onboardingEmail && onboardingPassword);
+test.describe.configure({ mode: "serial" });
 
 function uniqueTitle(prefix: string) {
   return `${prefix} ${Date.now()}`;
@@ -17,15 +14,8 @@ function tomorrowDateInput() {
   return date.toISOString().slice(0, 10);
 }
 
-async function login(page: Page, email = e2eEmail, password = e2ePassword) {
-  if (!email || !password) {
-    throw new Error("Set E2E credentials to run authenticated E2E tests.");
-  }
-
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+async function openPersonalWorkspace(page: Page) {
+  await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/(dashboard|onboarding)/);
 }
 
@@ -179,21 +169,16 @@ async function mockFlashcards(page: Page) {
 }
 
 test.describe("critical Synapse components", () => {
-  test("redirects unauthenticated workspace access to login", async ({ page }) => {
+  test("opens personal workspace without an auth challenge", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(page).toHaveURL(/\/(dashboard|onboarding)/);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toHaveCount(0);
   });
 
-  test("stress-tests onboarding subject rules for an incomplete profile", async ({ page }) => {
-    test.skip(
-      !hasOnboardingAccount,
-      "Set E2E_ONBOARDING_EMAIL and E2E_ONBOARDING_PASSWORD for onboarding E2E coverage."
-    );
-
-    await login(page, onboardingEmail, onboardingPassword);
-    await expect(page).toHaveURL(/\/onboarding/);
+  test("stress-tests onboarding subject rules for the personal profile", async ({ page }) => {
+    rmSync(resolve(process.cwd(), ".synapse-data"), { recursive: true, force: true });
+    await page.goto("/onboarding");
 
     await test.step("select an exam session", async () => {
       await expect(page.getByRole("heading", { name: "When are your exams?" })).toBeVisible();
@@ -221,16 +206,16 @@ test.describe("critical Synapse components", () => {
       await page.getByRole("button", { name: "Review" }).click();
     });
 
-    await test.step("review selected workspace without mutating onboarding state", async () => {
+    await test.step("review and build selected workspace", async () => {
       await expect(page.getByRole("heading", { name: "Your workspace is ready" })).toBeVisible();
       await expect(page.getByText("Synapse will generate IA folders")).toBeVisible();
       await expect(page.getByRole("button", { name: "Build my workspace" })).toBeEnabled();
+      await page.getByRole("button", { name: "Build my workspace" }).click();
+      await expect(page).toHaveURL(/\/dashboard/);
     });
   });
 
   test("stress-tests authenticated workspace shell and core interactions", async ({ page }) => {
-    test.skip(!hasE2EAccount, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD for authenticated E2E coverage.");
-
     const taskTitle = uniqueTitle("E2E stress task");
     const dueDate = tomorrowDateInput();
     const resourceTitle = uniqueTitle("Synapse E2E Resource");
@@ -241,8 +226,8 @@ test.describe("critical Synapse components", () => {
     await mockChat(page);
     await mockFlashcards(page);
 
-    await test.step("login into an onboarded workspace", async () => {
-      await login(page);
+    await test.step("open the personal workspace", async () => {
+      await openPersonalWorkspace(page);
       await expect(page).toHaveURL(/\/dashboard/);
       await expect(page.getByRole("heading", { name: /Good|Welcome|Hello|Morning|Afternoon|Evening/i })).toBeVisible();
     });
@@ -334,7 +319,7 @@ test.describe("critical Synapse components", () => {
       await page.getByRole("button", { name: "Study All" }).click();
       await expect(page.getByText("QUESTION")).toBeVisible();
       await page.getByText("Tap to reveal answer").click();
-      await expect(page.getByText("ANSWER")).toBeVisible();
+      await expect(page.getByText("ANSWER", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Good" }).click();
       await expect(page.getByText("Which Synapse feature surfaces cross-subject links?")).toBeVisible();
       await page.getByText("Tap to reveal answer").click();

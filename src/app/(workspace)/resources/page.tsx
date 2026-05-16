@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import { Library } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
@@ -21,31 +21,43 @@ const TYPE_COLORS: Record<string, string> = {
   other: "bg-primary/10 text-primary",
 };
 
+type ResourceItem = {
+  id: string;
+  title: string;
+  type: string;
+  tags: string[];
+  subject_id: string | null;
+  created_at: string;
+  file_size: number | null;
+};
+type ResourceSubject = { id: string; subject_name: string };
+type IndexedResource = { source_id: string };
+
 export default async function ResourcesPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const [resourcesResult, subjectsResult] = await Promise.all([
-    supabase
+    local
       .from("resources")
       .select("id, title, type, tags, subject_id, created_at, file_size")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    supabase
+    local
       .from("user_subjects")
       .select("id, subject_name")
       .eq("user_id", user.id),
   ]);
 
-  const resources = resourcesResult.data ?? [];
-  const subjects = subjectsResult.data ?? [];
+  const resources = (resourcesResult.data ?? []) as ResourceItem[];
+  const subjects = (subjectsResult.data ?? []) as ResourceSubject[];
   const subjectMap = Object.fromEntries(
     subjects.map((s) => [s.id, s.subject_name])
   );
 
   const resourceIds = resources.map((resource) => resource.id);
   const { data: indexedResources } = resourceIds.length > 0
-    ? await supabase
+    ? await local
         .from("embeddings")
         .select("source_id")
         .eq("user_id", user.id)
@@ -53,7 +65,9 @@ export default async function ResourcesPage() {
         .in("source_id", resourceIds)
     : { data: [] };
 
-  const indexedIds = new Set((indexedResources ?? []).map((e) => e.source_id));
+  const indexedIds = new Set(
+    ((indexedResources ?? []) as IndexedResource[]).map((e) => e.source_id)
+  );
 
   const indexedCount = resources.filter((r) => indexedIds.has(r.id)).length;
 
@@ -69,7 +83,7 @@ export default async function ResourcesPage() {
             )}
           </p>
         </div>
-        <UploadResource subjects={subjects as Array<{ id: string; subject_name: string }>} />
+        <UploadResource subjects={subjects} />
       </div>
 
       {resources.length === 0 ? (

@@ -1,15 +1,15 @@
 import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  return await updateSession(request);
+  return NextResponse.next({ request });
 }
 
 export const config = {
   matcher: [
     /*
-     * Match page requests only. API routes authenticate inside their handlers,
-     * so running proxy auth there duplicates Supabase round trips.
+     * Match page requests only. Personal mode does not need session refresh
+     * middleware, but keeping the matcher avoids work on static assets.
      */
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
   ],

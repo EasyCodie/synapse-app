@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
+
+# local personal Synapse data
+/.synapse-data
 
 # next.js
 /.next/

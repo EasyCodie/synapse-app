@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 
 function normalizeTitle(value: unknown) {
@@ -11,16 +11,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: conversation, error } = await supabase
+  const { data: conversation, error } = await local
     .from("chat_conversations")
     .select("id, title, created_at, updated_at, last_message_at")
     .eq("id", id)
@@ -39,10 +39,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -55,7 +55,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
 
-  const { data: conversation, error } = await supabase
+  const { data: conversation, error } = await local
     .from("chat_conversations")
     .update({ title, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -75,16 +75,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const { error } = await local
     .from("chat_conversations")
     .delete()
     .eq("id", id)

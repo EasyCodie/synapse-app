@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import {
   extractResourceText,
   getResourceType,
@@ -11,10 +11,10 @@ import {
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,11 +44,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. Upload to Supabase Storage
+    // 1. Store the original file in local app storage.
     // Sanitize filename: replace special chars with underscores, keep extension
     const sanitizedName = sanitizeResourceFilename(file.name);
     const filePath = `${user.id}/${Date.now()}-${sanitizedName}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await local.storage
       .from(RESOURCE_BUCKET)
       .upload(filePath, file, {
         contentType: file.type,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       return NextResponse.json(
-        { error: `Upload failed: ${uploadError.message}` },
+        { error: `Upload failed: ${(uploadError as { message: string }).message}` },
         { status: 500 }
       );
     }
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const contentText = rawText ? sanitizeExtractedText(rawText) : "";
 
     // 3. Insert resource record
-    const { data: resource, error: dbError } = await supabase
+    const { data: resource, error: dbError } = await local
       .from("resources")
       .insert({
         user_id: user.id,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     if (dbError) {
       // Cleanup storage on DB failure
-      await supabase.storage.from(RESOURCE_BUCKET).remove([filePath]);
+      await local.storage.from(RESOURCE_BUCKET).remove([filePath]);
       return NextResponse.json(
         { error: `Database error: ${dbError.message}` },
         { status: 500 }

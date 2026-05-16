@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 
 // GET /api/flashcards — list all flashcards for the current user
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const subjectId = searchParams.get("subject_id");
   const dueOnly = searchParams.get("due") === "true";
 
-  let query = supabase
+  let query = local
     .from("flashcards")
     .select("id, subject_id, resource_id, front, back, tags, confidence, next_review, created_at")
     .eq("user_id", user.id)
@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/flashcards — update confidence + next_review for a card
 export async function PATCH(request: NextRequest) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest) {
   const nextReview = new Date();
   nextReview.setDate(nextReview.getDate() + daysUntilReview);
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("flashcards")
     .update({
       confidence: Math.min(Math.max(confidence, 0), 5),
@@ -87,10 +87,10 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE /api/flashcards — delete a flashcard
 export async function DELETE(request: NextRequest) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await local
     .from("flashcards")
     .delete()
     .eq("id", id)

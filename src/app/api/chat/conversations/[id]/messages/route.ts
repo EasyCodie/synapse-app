@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -6,16 +6,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: conversation, error: conversationError } = await supabase
+  const { data: conversation, error: conversationError } = await local
     .from("chat_conversations")
     .select("id, title, created_at, updated_at, last_message_at")
     .eq("id", id)
@@ -26,7 +26,7 @@ export async function GET(
     return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
   }
 
-  const { data: messages, error } = await supabase
+  const { data: messages, error } = await local
     .from("chat_messages")
     .select("id, conversation_id, role, content, sources, tool_calls, created_at")
     .eq("user_id", user.id)

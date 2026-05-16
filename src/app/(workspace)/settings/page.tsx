@@ -1,20 +1,27 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { getWorkspaceProfile, requireUser } from "@/lib/auth";
+
+type SettingsSubject = {
+  id: string;
+  subject_name: string;
+  level: string;
+  subject_group: number;
+};
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const [profile, subjectsResult] = await Promise.all([
     getWorkspaceProfile(user.id),
-    supabase
+    local
       .from("user_subjects")
       .select("id, subject_name, level, subject_group")
       .eq("user_id", user.id)
       .order("subject_group"),
   ]);
 
-  const subjects = subjectsResult.data ?? [];
+  const subjects = (subjectsResult.data ?? []) as SettingsSubject[];
 
   return (
     <div className="space-y-6 max-w-xl">

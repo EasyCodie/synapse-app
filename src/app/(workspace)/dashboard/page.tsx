@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { getWorkspaceProfile, requireUser } from "@/lib/auth";
 import { format, differenceInDays } from "date-fns";
 import Link from "next/link";
@@ -15,9 +15,26 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 
+type DashboardSubject = { id: string; subject_name: string; level: string };
+type DashboardTask = {
+  id: string;
+  title: string;
+  due_date: string | null;
+  priority: string;
+  completed: boolean;
+  subject_id: string | null;
+};
+type DashboardIA = {
+  id: string;
+  title: string | null;
+  status: string;
+  due_date: string | null;
+  subject_id: string | null;
+};
+
 export default async function DashboardPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const now = new Date();
 
@@ -30,12 +47,12 @@ export default async function DashboardPage() {
     dueFlashcardsResult,
   ] = await Promise.all([
     getWorkspaceProfile(user.id),
-    supabase
+    local
       .from("user_subjects")
       .select("id, subject_name, level")
       .eq("user_id", user.id)
       .order("subject_group"),
-    supabase
+    local
       .from("tasks")
       .select("id, title, due_date, priority, completed, subject_id", {
         count: "exact",
@@ -44,25 +61,25 @@ export default async function DashboardPage() {
       .eq("completed", false)
       .order("due_date", { ascending: true })
       .limit(5),
-    supabase
+    local
       .from("internal_assessments")
       .select("id, title, status, due_date, subject_id")
       .eq("user_id", user.id)
       .order("due_date", { ascending: true }),
-    supabase
+    local
       .from("flashcards")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id),
-    supabase
+    local
       .from("flashcards")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .lte("next_review", now.toISOString()),
   ]);
 
-  const subjects = subjectsResult.data ?? [];
-  const tasks = tasksResult.data ?? [];
-  const ias = iasResult.data ?? [];
+  const subjects = (subjectsResult.data ?? []) as DashboardSubject[];
+  const tasks = (tasksResult.data ?? []) as DashboardTask[];
+  const ias = (iasResult.data ?? []) as DashboardIA[];
   const openTaskCount = tasksResult.count ?? tasks.length;
   const flashcardCount = flashcardsCountResult.count ?? 0;
   const dueFlashcards = dueFlashcardsResult.count ?? 0;

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import OpenAI from "openai";
 import {
   searchResources,
@@ -272,10 +272,10 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 
 // ─── Route Handler ──────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -306,7 +306,7 @@ export async function POST(request: Request) {
 
     let attachedResources: AttachedResource[] = [];
     if (attachmentResourceIds.length > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await local
         .from("resources")
         .select("id, title, type, content_text, created_at")
         .eq("user_id", user.id)
@@ -347,7 +347,7 @@ export async function POST(request: Request) {
     } | null = null;
 
     if (requestedConversationId) {
-      const { data, error } = await supabase
+      const { data, error } = await local
         .from("chat_conversations")
         .select("id, title, created_at, updated_at, last_message_at")
         .eq("id", requestedConversationId)
@@ -363,7 +363,7 @@ export async function POST(request: Request) {
       conversation = data;
     } else {
       const generatedTitle = await generateConversationTitle(openai, message);
-      const { data, error } = await supabase
+      const { data, error } = await local
         .from("chat_conversations")
         .insert({
           user_id: user.id,
@@ -408,7 +408,7 @@ export async function POST(request: Request) {
     }));
 
     // 1. Save user message to DB
-    await supabase.from("chat_messages").insert({
+    await local.from("chat_messages").insert({
       user_id: user.id,
       conversation_id: conversationId,
       role: "user",
@@ -416,7 +416,7 @@ export async function POST(request: Request) {
       sources: attachmentSources.length > 0 ? attachmentSources : null,
     });
 
-    await supabase
+    await local
       .from("chat_conversations")
       .update({
         title: conversationTitle,
@@ -427,7 +427,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     // 2. Load chat history from DB (last 20 for LLM context)
-    const { data: historyRows } = await supabase
+    const { data: historyRows } = await local
       .from("chat_messages")
       .select("role, content")
       .eq("user_id", user.id)
@@ -576,22 +576,22 @@ export async function POST(request: Request) {
                 let result: string;
                 switch (toolName) {
                   case "search_resources":
-                    result = await searchResources(supabase, user.id, toolArgs as Parameters<typeof searchResources>[2]);
+                    result = await searchResources(local, user.id, toolArgs as Parameters<typeof searchResources>[2]);
                     break;
                   case "create_flashcards":
-                    result = await createFlashcards(supabase, user.id, toolArgs as Parameters<typeof createFlashcards>[2]);
+                    result = await createFlashcards(local, user.id, toolArgs as Parameters<typeof createFlashcards>[2]);
                     break;
                   case "create_task":
-                    result = await createTask(supabase, user.id, toolArgs as Parameters<typeof createTask>[2]);
+                    result = await createTask(local, user.id, toolArgs as Parameters<typeof createTask>[2]);
                     break;
                   case "get_upcoming_deadlines":
-                    result = await getUpcomingDeadlines(supabase, user.id, toolArgs as Parameters<typeof getUpcomingDeadlines>[2]);
+                    result = await getUpcomingDeadlines(local, user.id, toolArgs as Parameters<typeof getUpcomingDeadlines>[2]);
                     break;
                   case "summarize_resource":
-                    result = await summarizeResource(supabase, user.id, toolArgs as Parameters<typeof summarizeResource>[2]);
+                    result = await summarizeResource(local, user.id, toolArgs as Parameters<typeof summarizeResource>[2]);
                     break;
                   case "list_resources":
-                    result = await listResources(supabase, user.id, toolArgs as Parameters<typeof listResources>[2]);
+                    result = await listResources(local, user.id, toolArgs as Parameters<typeof listResources>[2]);
                     break;
                   default:
                     result = `Unknown tool: ${toolName}`;
@@ -625,7 +625,7 @@ export async function POST(request: Request) {
 
             // No tool calls — model generated a final response
             // Save assistant message to DB
-            await supabase.from("chat_messages").insert({
+            await local.from("chat_messages").insert({
               user_id: user.id,
               conversation_id: conversationId,
               role: "assistant",
@@ -633,7 +633,7 @@ export async function POST(request: Request) {
               tool_calls: toolCallsLog.length > 0 ? toolCallsLog : null,
             });
 
-            await supabase
+            await local
               .from("chat_conversations")
               .update({
                 updated_at: new Date().toISOString(),

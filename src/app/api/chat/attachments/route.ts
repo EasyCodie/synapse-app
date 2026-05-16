@@ -9,13 +9,13 @@ import {
   sanitizeExtractedText,
   sanitizeResourceFilename,
 } from "@/lib/resource-upload";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const sanitizedName = sanitizeResourceFilename(file.name || title);
     const filePath = `${user.id}/chat/${Date.now()}-${sanitizedName}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await local.storage
       .from(RESOURCE_BUCKET)
       .upload(filePath, file, {
         contentType: file.type,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       return NextResponse.json(
-        { error: `Upload failed: ${uploadError.message}` },
+        { error: `Upload failed: ${(uploadError as { message: string }).message}` },
         { status: 500 }
       );
     }
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const rawText = await extractResourceText(file);
     const contentText = rawText ? sanitizeExtractedText(rawText) : "";
 
-    const { data: resource, error: dbError } = await supabase
+    const { data: resource, error: dbError } = await local
       .from("resources")
       .insert({
         user_id: user.id,
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       .single();
 
     if (dbError || !resource) {
-      await supabase.storage.from(RESOURCE_BUCKET).remove([filePath]);
+      await local.storage.from(RESOURCE_BUCKET).remove([filePath]);
       return NextResponse.json(
         { error: `Database error: ${dbError?.message ?? "Failed to create resource"}` },
         { status: 500 }

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
 import { z } from "zod";
@@ -26,8 +26,8 @@ function chunkText(text: string): string[] {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
   try {
     // Delete existing embeddings for this source
-    await supabase
+    await local
       .from("embeddings")
       .delete()
       .eq("user_id", user.id)
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { error } = await supabase.from("embeddings").insert(embeddingRows);
+    const { error } = await local.from("embeddings").insert(embeddingRows);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 
 /**
@@ -6,10 +6,10 @@ import { NextResponse } from "next/server";
  * Messages are returned in chronological order (oldest first).
  */
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const requestedConversationId = searchParams.get("conversation_id");
 
-  let conversationQuery = supabase
+  let conversationQuery = local
     .from("chat_conversations")
     .select("id, title, created_at, updated_at, last_message_at")
     .eq("user_id", user.id);
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ conversation: null, messages: [] });
   }
 
-  const { data: messages, error } = await supabase
+  const { data: messages, error } = await local
     .from("chat_messages")
     .select("id, role, content, sources, tool_calls, created_at")
     .eq("user_id", user.id)
@@ -69,10 +69,10 @@ export async function GET(request: Request) {
  * DELETE /api/chat/history — Clears chat history for compatibility.
  */
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,7 +82,7 @@ export async function DELETE(request: Request) {
   const requestedConversationId = searchParams.get("conversation_id");
 
   if (requestedConversationId) {
-    const { error } = await supabase
+    const { error } = await local
       .from("chat_messages")
       .delete()
       .eq("user_id", user.id)
@@ -95,7 +95,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await supabase
+    await local
       .from("chat_conversations")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", requestedConversationId)
@@ -104,7 +104,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   }
 
-  const { error } = await supabase
+  const { error } = await local
     .from("chat_conversations")
     .delete()
     .eq("user_id", user.id);

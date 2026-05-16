@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Synapse
 
-## Getting Started
+Synapse is a personal IB study workspace built with Next.js. It now runs without a hosted database or external auth provider: profile, subjects, tasks, resources, flashcards, chat history, and embeddings are stored locally under `.synapse-data/`.
 
-First, run the development server:
+## Local Development
+
+Use `pnpm.cmd` on Windows:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm.cmd install
+pnpm.cmd dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`. The app routes directly into the personal workspace. If onboarding has not been completed, `/dashboard` redirects to `/onboarding`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local Data
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Runtime data is intentionally not committed:
 
-## Learn More
+- `.synapse-data/db.json` stores app records.
+- `.synapse-data/uploads/` stores uploaded resource files.
+- Deleting `.synapse-data/` resets the personal workspace.
 
-To learn more about Next.js, take a look at the following resources:
+## Verification
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+node_modules\.bin\tsc.cmd --noEmit
+pnpm.cmd run lint
+pnpm.cmd test
+pnpm.cmd run build
+pnpm.cmd test:e2e
+```

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 
 // GET /api/tasks — list tasks (optionally filter by completed, due range)
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const searchParams = request.nextUrl.searchParams;
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  let query = supabase
+  let query = local
     .from("tasks")
     .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
     .eq("user_id", user.id)
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tasks — create a task
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("tasks")
     .insert({
       user_id: user.id,
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/tasks — update a task (toggle complete, edit fields)
 export async function PATCH(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("tasks")
     .update(updates)
     .eq("id", id)
@@ -91,14 +91,14 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE /api/tasks — delete a task
 export async function DELETE(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const { error } = await supabase
+  const { error } = await local
     .from("tasks")
     .delete()
     .eq("id", id)

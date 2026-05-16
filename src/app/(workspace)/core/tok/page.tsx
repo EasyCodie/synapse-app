@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 
 export default async function TOKPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data: tok } = await supabase
+  const { data: tok } = await local
     .from("tok_tracker")
     .select("id, essay_title, prescribed_title, exhibition_objects, status")
     .eq("user_id", user.id)

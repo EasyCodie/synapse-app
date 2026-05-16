@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 
 export default async function EEPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data: ee } = await supabase
+  const { data: ee } = await local
     .from("ee_tracker")
     .select("id, title, subject, supervisor, word_count, status, milestones")
     .eq("user_id", user.id)

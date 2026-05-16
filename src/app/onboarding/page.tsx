@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { generateAllWorkspaces, type SubjectSelection } from "@/lib/workspace-generator";
+import type { SubjectSelection } from "@/lib/workspace-generator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import examSessions from "@/data/exam-sessions.json";
@@ -73,15 +72,11 @@ export default function OnboardingPage() {
     let mounted = true;
 
     async function redirectIfComplete() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!mounted || !user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_complete")
-        .eq("id", user.id)
-        .maybeSingle();
+      const response = await fetch("/api/onboarding");
+      if (!mounted || !response.ok) return;
+      const { profile } = (await response.json()) as {
+        profile?: { onboarding_complete?: boolean };
+      };
 
       if (mounted && profile?.onboarding_complete) {
         router.replace("/dashboard");
@@ -101,96 +96,17 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      savingRef.current = false;
-      setSaving(false);
-      router.push("/login");
-      return;
-    }
+    const response = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ examSession, selectedSubjects }),
+    });
 
-    const { data: existingProfile, error: existingProfileError } = await supabase
-      .from("profiles")
-      .select("onboarding_complete")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (existingProfileError) {
-      setError(existingProfileError.message);
-      savingRef.current = false;
-      setSaving(false);
-      return;
-    }
-
-    if (existingProfile?.onboarding_complete) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    // Insert subjects
-    const subjectRows = selectedSubjects.map((s) => ({
-      user_id: user.id,
-      subject_name: s.name,
-      subject_group: s.group,
-      level: s.level,
-      language: s.language,
-    }));
-
-    const { data: insertedSubjects, error: subjectsError } = await supabase
-      .from("user_subjects")
-      .upsert(subjectRows, { onConflict: "user_id,subject_name" })
-      .select("id, subject_name");
-
-    if (subjectsError) {
-      setError(subjectsError.message);
-      savingRef.current = false;
-      setSaving(false);
-      return;
-    }
-
-    const subjectIdByName = new Map(
-      (insertedSubjects ?? []).map((subject) => [subject.subject_name, subject.id])
-    );
-
-    // Generate and store workspace structures
-    const workspaces = generateAllWorkspaces(selectedSubjects);
-    const workspaceRows = workspaces.map((ws) => ({
-      user_id: user.id,
-      subject_id: subjectIdByName.get(ws.subjectName) ?? null,
-      structure: ws as unknown as Record<string, unknown>,
-    }));
-
-    if (workspaceRows.some((row) => !row.subject_id)) {
-      setError("Could not match every selected subject to a workspace.");
-      savingRef.current = false;
-      setSaving(false);
-      return;
-    }
-
-    const { error: workspaceError } = await supabase
-      .from("workspaces")
-      .upsert(workspaceRows, { onConflict: "user_id,subject_id" });
-
-    if (workspaceError) {
-      setError(workspaceError.message);
-      savingRef.current = false;
-      setSaving(false);
-      return;
-    }
-
-    // Mark onboarding complete only after subjects and workspaces are ready.
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert({
-        id: user.id,
-        exam_session: examSession,
-        onboarding_complete: true,
-        full_name: user.user_metadata?.["full_name"] ?? null,
-      });
-
-    if (profileError) {
-      setError(profileError.message);
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      setError(payload.error ?? "Could not build your workspace.");
       savingRef.current = false;
       setSaving(false);
       return;

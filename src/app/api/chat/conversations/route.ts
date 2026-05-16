@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 
 function normalizeTitle(value: unknown) {
@@ -7,16 +7,16 @@ function normalizeTitle(value: unknown) {
 }
 
 export async function GET() {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: conversations, error } = await supabase
+  const { data: conversations, error } = await local
     .from("chat_conversations")
     .select("id, title, created_at, updated_at, last_message_at")
     .eq("user_id", user.id)
@@ -34,10 +34,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { title?: unknown };
   const title = normalizeTitle(body.title);
 
-  const { data: conversation, error } = await supabase
+  const { data: conversation, error } = await local
     .from("chat_conversations")
     .insert({ user_id: user.id, title })
     .select("id, title, created_at, updated_at, last_message_at")

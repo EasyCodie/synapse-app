@@ -1,16 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
 
 export default async function CorePage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const [eeResult, tokResult, casResult] = await Promise.all([
-    supabase.from("ee_tracker").select("id, title, status, word_count").eq("user_id", user.id).single(),
-    supabase.from("tok_tracker").select("id, essay_title, status").eq("user_id", user.id).single(),
-    supabase.from("cas_experiences").select("id, title, type, status").eq("user_id", user.id),
+    local.from("ee_tracker").select("id, title, status, word_count").eq("user_id", user.id).single(),
+    local.from("tok_tracker").select("id, essay_title, status").eq("user_id", user.id).single(),
+    local.from("cas_experiences").select("id, title, type, status").eq("user_id", user.id),
   ]);
 
   const ee = eeResult.data;

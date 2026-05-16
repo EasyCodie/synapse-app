@@ -1,10 +1,12 @@
-import { SupabaseClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "@/lib/embeddings";
+import type { createClient } from "@/lib/local/client";
+
+type LocalClient = Awaited<ReturnType<typeof createClient>>;
 
 /**
  * AI Tool Implementations
  *
- * Each tool function receives the Supabase client + user ID + parsed arguments,
+ * Each tool function receives the local client + user ID + parsed arguments,
  * and returns a string result that goes back to the model as tool output.
  */
 
@@ -16,7 +18,7 @@ interface SearchResourcesArgs {
 }
 
 export async function searchResources(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: SearchResourcesArgs
 ): Promise<string> {
@@ -25,7 +27,7 @@ export async function searchResources(
   try {
     const queryEmbedding = await generateEmbedding(query);
 
-    const { data: results, error } = await supabase.rpc("search_embeddings", {
+    const { data: results, error } = await local.rpc("search_embeddings", {
       query_embedding: queryEmbedding,
       match_user_id: userId,
       match_threshold: 0.4,
@@ -61,7 +63,7 @@ interface CreateFlashcardsArgs {
 }
 
 export async function createFlashcards(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: CreateFlashcardsArgs
 ): Promise<string> {
@@ -81,7 +83,7 @@ export async function createFlashcards(
     next_review: new Date().toISOString(),
   }));
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("flashcards")
     .insert(rows)
     .select("id");
@@ -104,13 +106,13 @@ interface CreateTaskArgs {
 }
 
 export async function createTask(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: CreateTaskArgs
 ): Promise<string> {
   const { title, description, due_date, priority = "medium", subject_id } = args;
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("tasks")
     .insert({
       user_id: userId,
@@ -142,7 +144,7 @@ interface GetUpcomingDeadlinesArgs {
 }
 
 export async function getUpcomingDeadlines(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: GetUpcomingDeadlinesArgs
 ): Promise<string> {
@@ -156,7 +158,7 @@ export async function getUpcomingDeadlines(
   const futureStr = futureDate.toISOString().split("T")[0];
 
   // Fetch tasks
-  const { data: tasks } = await supabase
+  const { data: tasks } = await local
     .from("tasks")
     .select("title, due_date, priority, completed")
     .eq("user_id", userId)
@@ -166,7 +168,7 @@ export async function getUpcomingDeadlines(
     .order("due_date", { ascending: true });
 
   // Fetch milestones
-  const { data: milestones } = await supabase
+  const { data: milestones } = await local
     .from("milestones")
     .select("title, date, type")
     .eq("user_id", userId)
@@ -205,13 +207,13 @@ interface SummarizeResourceArgs {
 }
 
 export async function summarizeResource(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: SummarizeResourceArgs
 ): Promise<string> {
   const { resource_id, title_search } = args;
 
-  let query = supabase
+  let query = local
     .from("resources")
     .select("id, title, type, content_text, created_at")
     .eq("user_id", userId);
@@ -258,13 +260,13 @@ interface ListResourcesArgs {
 }
 
 export async function listResources(
-  supabase: SupabaseClient,
+  local: LocalClient,
   userId: string,
   args: ListResourcesArgs
 ): Promise<string> {
   const { limit = 20, subject_id } = args;
 
-  let query = supabase
+  let query = local
     .from("resources")
     .select("id, title, type, subject_id, created_at, content_text")
     .eq("user_id", userId)
@@ -285,7 +287,12 @@ export async function listResources(
     return "No resources uploaded yet. The student should upload PDFs, documents, or text files via the Resource Library.";
   }
 
-  const formatted = resources.map((r, i) => {
+  const formatted = (resources as Array<{
+    title: string;
+    type: string;
+    created_at?: string;
+    content_text?: string | null;
+  }>).map((r, i) => {
     const hasContent = r.content_text && r.content_text.length > 0;
     const status = hasContent ? "✓ indexed" : "⚠ not indexed";
     return `${i + 1}. "${r.title}" (${r.type}) — uploaded ${r.created_at?.split("T")[0]} [${status}]`;

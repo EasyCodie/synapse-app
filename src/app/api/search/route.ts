@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
 import { z } from "zod";
@@ -15,8 +15,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid query" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   try {
     const queryEmbedding = await generateEmbedding(parsed.data.q);
 
-    const { data: results, error } = await supabase.rpc("search_embeddings", {
+    const { data: results, error } = await local.rpc("search_embeddings", {
       query_embedding: queryEmbedding,
       match_user_id: user.id,
       match_threshold: 0.35,

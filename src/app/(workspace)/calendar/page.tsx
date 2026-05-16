@@ -1,18 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
 export default async function CalendarPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const [tasksResult, milestonesResult] = await Promise.all([
-    supabase
+    local
       .from("tasks")
       .select("id, title, description, due_date, due_time, priority, completed, subject_id, created_at")
       .eq("user_id", user.id)
       .order("due_date", { ascending: true }),
-    supabase
+    local
       .from("milestones")
       .select("id, title, date, type, subject_id, created_at")
       .eq("user_id", user.id)

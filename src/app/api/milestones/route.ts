@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 
 // GET /api/milestones — list milestones
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const searchParams = request.nextUrl.searchParams;
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  let query = supabase
+  let query = local
     .from("milestones")
     .select("id, title, date, type, subject_id, created_at")
     .eq("user_id", user.id)
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/milestones — create a milestone
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "title, date, and type are required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await local
     .from("milestones")
     .insert({
       user_id: user.id,
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/milestones — delete a milestone
 export async function DELETE(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const local = await createClient();
+  const { data: { user } } = await local.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const { error } = await supabase
+  const { error } = await local
     .from("milestones")
     .delete()
     .eq("id", id)

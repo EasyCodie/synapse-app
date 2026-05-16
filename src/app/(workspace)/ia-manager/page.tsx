@@ -1,8 +1,19 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import { ClipboardList } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
+
+type IAItem = {
+  id: string;
+  title: string | null;
+  status: string;
+  due_date: string | null;
+  word_count: number;
+  target_word_count: number | null;
+  subject_id: string | null;
+};
+type IASubject = { id: string; subject_name: string; level: string };
 
 const STATUS_COLUMNS = [
   { key: "not_started", label: "Not Started" },
@@ -14,21 +25,21 @@ const STATUS_COLUMNS = [
 
 export default async function IAManagerPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
   const [iasResult, subjectsResult] = await Promise.all([
-    supabase
+    local
       .from("internal_assessments")
       .select("id, title, status, due_date, word_count, target_word_count, subject_id")
       .eq("user_id", user.id),
-    supabase
+    local
       .from("user_subjects")
       .select("id, subject_name, level")
       .eq("user_id", user.id),
   ]);
 
-  const ias = iasResult.data ?? [];
-  const subjects = subjectsResult.data ?? [];
+  const ias = (iasResult.data ?? []) as IAItem[];
+  const subjects = (subjectsResult.data ?? []) as IASubject[];
 
   const subjectMap = Object.fromEntries(subjects.map((s) => [s.id, s]));
 
@@ -59,7 +70,7 @@ export default async function IAManagerPage() {
                 </div>
                 <div className="space-y-2">
                   {colIAs.map((ia) => {
-                    const subject = subjectMap[ia.subject_id];
+                    const subject = ia.subject_id ? subjectMap[ia.subject_id] : undefined;
                     return (
                       <div
                         key={ia.id}

@@ -1,26 +1,30 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
-import type { Database } from "@/types/database";
 
-type CASExperience = Pick<
-  Database["public"]["Tables"]["cas_experiences"]["Row"],
-  "id" | "title" | "type" | "description" | "status" | "created_at"
->;
+type CASEType = "creativity" | "activity" | "service";
+type CASExperience = {
+  id: string;
+  title: string;
+  type: CASEType;
+  description: string | null;
+  status: string;
+  created_at: string;
+};
 
 export default async function CASPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data } = await supabase
+  const { data } = await local
     .from("cas_experiences")
     .select("id, title, type, description, status, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const cas: CASExperience[] = data ?? [];
+  const cas = (data ?? []) as CASExperience[];
 
   const creativity = cas.filter((e) => e.type === "creativity");
   const activity = cas.filter((e) => e.type === "activity");

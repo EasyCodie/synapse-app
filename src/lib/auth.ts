@@ -1,13 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 import { cache } from "react";
 
+interface LocalUser {
+  id: string;
+  email: string;
+  user_metadata?: Record<string, unknown>;
+}
+
 export const getCurrentUser = cache(async () => {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   return user;
 });
@@ -16,7 +21,7 @@ export const getCurrentUser = cache(async () => {
  * Gets the authenticated user or redirects to /login.
  * Returns a non-null User — safe to use without null checks after this call.
  */
-export const requireUser = cache(async (): Promise<User> => {
+export const requireUser = cache(async (): Promise<LocalUser> => {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -27,9 +32,9 @@ export const requireUser = cache(async (): Promise<User> => {
 });
 
 export const getWorkspaceProfile = cache(async (userId: string) => {
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data: profile } = await supabase
+  const { data: profile } = await local
     .from("profiles")
     .select("onboarding_complete, full_name, exam_session")
     .eq("id", userId)

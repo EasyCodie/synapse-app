@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, FileText, CheckSquare, Archive } from "lucide-react";
+import { FileText, CheckSquare, Archive } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 
@@ -10,12 +10,35 @@ interface SubjectPageProps {
   params: Promise<{ subjectId: string }>;
 }
 
+type SubjectDetail = {
+  id: string;
+  subject_name: string;
+  level: string;
+  subject_group: number;
+  language: string;
+};
+type SubjectNote = {
+  id: string;
+  title: string;
+  updated_at: string;
+  folder_path: string;
+};
+type SyllabusItem = { id: string; topic_id: string; completed: boolean };
+type SubjectIA = {
+  id: string;
+  title: string | null;
+  status: string;
+  word_count: number;
+  target_word_count: number | null;
+  due_date: string | null;
+};
+
 export default async function SubjectDetailPage({ params }: SubjectPageProps) {
   const { subjectId } = await params;
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data: subject } = await supabase
+  const { data: subject } = await local
     .from("user_subjects")
     .select("id, subject_name, level, subject_group, language")
     .eq("id", subjectId)
@@ -23,20 +46,21 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
     .single();
 
   if (!subject) notFound();
+  const subjectDetail = subject as SubjectDetail;
 
   const [notesResult, syllabusResult, iaResult] = await Promise.all([
-    supabase
+    local
       .from("notes")
       .select("id, title, updated_at, folder_path")
       .eq("user_id", user.id)
       .eq("subject_id", subjectId)
       .order("updated_at", { ascending: false }),
-    supabase
+    local
       .from("syllabus_progress")
       .select("id, topic_id, completed")
       .eq("user_id", user.id)
       .eq("subject_id", subjectId),
-    supabase
+    local
       .from("internal_assessments")
       .select("id, title, status, word_count, target_word_count, due_date")
       .eq("user_id", user.id)
@@ -44,9 +68,9 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
       .single(),
   ]);
 
-  const notes = notesResult.data ?? [];
-  const syllabusProgress = syllabusResult.data ?? [];
-  const ia = iaResult.data;
+  const notes = (notesResult.data ?? []) as SubjectNote[];
+  const syllabusProgress = (syllabusResult.data ?? []) as SyllabusItem[];
+  const ia = iaResult.data as SubjectIA | null;
 
   const completedTopics = syllabusProgress.filter((s) => s.completed).length;
   const totalTopics = syllabusProgress.length;
@@ -61,16 +85,16 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
               Subjects
             </Link>
             <span className="text-ink-tertiary">/</span>
-            <span className="text-body-sm text-ink">{subject.subject_name}</span>
+            <span className="text-body-sm text-ink">{subjectDetail.subject_name}</span>
           </div>
-          <h1 className="text-headline text-ink">{subject.subject_name}</h1>
+          <h1 className="text-headline text-ink">{subjectDetail.subject_name}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className={`text-caption px-2 py-0.5 rounded-pill ${subject.level === "HL" ? "bg-primary/10 text-primary" : "bg-surface-3 text-ink-subtle"}`}>
-              {subject.level}
+            <span className={`text-caption px-2 py-0.5 rounded-pill ${subjectDetail.level === "HL" ? "bg-primary/10 text-primary" : "bg-surface-3 text-ink-subtle"}`}>
+              {subjectDetail.level}
             </span>
-            <span className="text-caption text-ink-subtle">Group {subject.subject_group}</span>
+            <span className="text-caption text-ink-subtle">Group {subjectDetail.subject_group}</span>
             <span className="text-caption text-ink-subtle">·</span>
-            <span className="text-caption text-ink-subtle">{subject.language}</span>
+            <span className="text-caption text-ink-subtle">{subjectDetail.language}</span>
           </div>
         </div>
       </div>
@@ -95,7 +119,7 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
             <EmptyState
               icon={FileText}
               title="No notes yet"
-              description="Start taking notes for this subject."
+              description="Start taking notes for this subjectDetail."
             />
           ) : (
             <div className="space-y-2">

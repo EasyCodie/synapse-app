@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
 import { extractPdfText } from "@/lib/extract-pdf";
@@ -26,10 +26,10 @@ function chunkText(text: string): string[] {
  * Body: { resource_id: string }
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const local = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await local.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   // Fetch the resource
-  const { data: resource, error: fetchError } = await supabase
+  const { data: resource, error: fetchError } = await local
     .from("resources")
     .select("id, title, type, file_path, content_text")
     .eq("id", resource_id)
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
   // If no content_text, try to re-extract from storage
   if (!contentText && resource.file_path) {
-    const { data: fileData, error: downloadError } = await supabase.storage
+    const { data: fileData, error: downloadError } = await local.storage
       .from("resources")
       .download(resource.file_path);
 
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
     // Update resource with extracted text
     if (contentText) {
-      await supabase
+      await local
         .from("resources")
         .update({ content_text: contentText })
         .eq("id", resource_id);
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
   }
 
   // Delete existing embeddings for this resource
-  await supabase
+  await local
     .from("embeddings")
     .delete()
     .eq("source_id", resource_id)
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     try {
       const embedding = await generateEmbedding(chunks[i]);
 
-      const { error: insertError } = await supabase.from("embeddings").insert({
+      const { error: insertError } = await local.from("embeddings").insert({
         user_id: user.id,
         source_type: "resource",
         source_id: resource_id,

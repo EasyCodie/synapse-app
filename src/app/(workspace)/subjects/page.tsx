@@ -1,21 +1,28 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
 
+type SubjectItem = {
+  id: string;
+  subject_name: string;
+  level: string;
+  subject_group: number;
+};
+
 export default async function SubjectsPage() {
   const user = await requireUser();
-  const supabase = await createClient();
+  const local = await createClient();
 
-  const { data: subjects } = await supabase
+  const { data: subjects } = await local
     .from("user_subjects")
     .select("id, subject_name, level, subject_group")
     .eq("user_id", user.id)
     .order("subject_group");
 
-  const subjectList = subjects ?? [];
+  const subjectList = (subjects ?? []) as SubjectItem[];
 
   return (
     <div className="space-y-6">
