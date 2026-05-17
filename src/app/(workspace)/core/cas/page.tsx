@@ -1,10 +1,12 @@
 import Link from "next/link";
 import {
   CASEditor,
+  type CurriculumDocumentItem,
   type CASExperience,
 } from "@/components/curriculum/curriculum-controls";
 import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { createClient } from "@/lib/local/client";
 
 export default async function CASPage() {
@@ -12,13 +14,22 @@ export default async function CASPage() {
   await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
-  const { data } = await local
-    .from("cas_experiences")
-    .select("id, title, type, description, status, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const [casResult, documentsResult, driveStatus] = await Promise.all([
+    local
+      .from("cas_experiences")
+      .select("id, title, type, description, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    local
+      .from("curriculum_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("owner_type", "cas")
+      .order("created_at", { ascending: false }),
+    getGoogleDriveStatus(user.id),
+  ]);
 
-  const cas = (data ?? []) as CASExperience[];
+  const cas = (casResult.data ?? []) as CASExperience[];
 
   return (
     <div className="space-y-6">
@@ -54,7 +65,11 @@ export default async function CASPage() {
         ))}
       </div>
 
-      <CASEditor experiences={cas} />
+      <CASEditor
+        experiences={cas}
+        documents={(documentsResult.data ?? []) as CurriculumDocumentItem[]}
+        driveStatus={driveStatus}
+      />
     </div>
   );
 }

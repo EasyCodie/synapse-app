@@ -35,6 +35,8 @@ const TABLES = [
   "ee_tracker",
   "tok_tracker",
   "cas_experiences",
+  "integrations",
+  "curriculum_documents",
   "flashcards",
 ];
 
@@ -157,6 +159,13 @@ function withDefaults(table: string, row: Row) {
     stamped.learning_outcomes ??= [];
     stamped.reflections ??= [];
     stamped.status ??= "planned";
+  }
+  if (table === "integrations") {
+    stamped.updated_at ??= stamped.created_at;
+  }
+  if (table === "curriculum_documents") {
+    stamped.source ??= "google_drive";
+    stamped.updated_at ??= stamped.created_at;
   }
 
   return stamped;

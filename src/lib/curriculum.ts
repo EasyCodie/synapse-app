@@ -43,7 +43,14 @@ const iaData = iaRequirements as IaRequirements;
 export async function ensureCurriculumScaffold(userId: string) {
   const local = await createClient();
 
-  const [subjectsResult, workspacesResult, eeResult, tokResult] = await Promise.all([
+  const [
+    subjectsResult,
+    workspacesResult,
+    syllabusResult,
+    iaResult,
+    eeResult,
+    tokResult,
+  ] = await Promise.all([
     local
       .from("user_subjects")
       .select("id, subject_name, subject_key")
@@ -51,6 +58,14 @@ export async function ensureCurriculumScaffold(userId: string) {
     local
       .from("workspaces")
       .select("subject_id, structure")
+      .eq("user_id", userId),
+    local
+      .from("syllabus_progress")
+      .select("user_id, subject_id, topic_id")
+      .eq("user_id", userId),
+    local
+      .from("internal_assessments")
+      .select("subject_id")
       .eq("user_id", userId),
     local.from("ee_tracker").select("id").eq("user_id", userId).maybeSingle(),
     local.from("tok_tracker").select("id").eq("user_id", userId).maybeSingle(),
@@ -63,6 +78,17 @@ export async function ensureCurriculumScaffold(userId: string) {
       .filter((workspace) => workspace.subject_id)
       .map((workspace) => [workspace.subject_id!, workspace.structure])
   );
+  const existingSyllabusKeys = new Set(
+    ((syllabusResult.data ?? []) as Array<{
+      subject_id: string;
+      topic_id: string;
+    }>).map((row) => `${row.subject_id}:${row.topic_id}`)
+  );
+  const existingIaSubjectIds = new Set(
+    ((iaResult.data ?? []) as Array<{ subject_id: string | null }>).map(
+      (row) => row.subject_id
+    )
+  );
 
   const syllabusRows: Array<Record<string, unknown>> = [];
   const iaRows: Array<Record<string, unknown>> = [];
@@ -73,10 +99,12 @@ export async function ensureCurriculumScaffold(userId: string) {
 
     for (const topic of workspace?.syllabusTopics ?? []) {
       topic.subtopics.forEach((subtopic, index) => {
+        const topicId = `${topic.id}-${index}`;
+        if (existingSyllabusKeys.has(`${subject.id}:${topicId}`)) return;
         syllabusRows.push({
           user_id: userId,
           subject_id: subject.id,
-          topic_id: `${topic.id}-${index}`,
+          topic_id: topicId,
           topic_title: topic.title,
           title: subtopic,
           completed: false,
@@ -86,7 +114,7 @@ export async function ensureCurriculumScaffold(userId: string) {
     }
 
     const iaConfig = workspace?.iaConfig ?? (subjectKey ? iaData[subjectKey] : null);
-    if (iaConfig) {
+    if (iaConfig && !existingIaSubjectIds.has(subject.id)) {
       iaRows.push({
         user_id: userId,
         subject_id: subject.id,
@@ -105,15 +133,11 @@ export async function ensureCurriculumScaffold(userId: string) {
   }
 
   if (syllabusRows.length > 0) {
-    await local
-      .from("syllabus_progress")
-      .upsert(syllabusRows, { onConflict: "user_id,subject_id,topic_id" });
+    await local.from("syllabus_progress").insert(syllabusRows);
   }
 
   if (iaRows.length > 0) {
-    await local
-      .from("internal_assessments")
-      .upsert(iaRows, { onConflict: "user_id,subject_id" });
+    await local.from("internal_assessments").insert(iaRows);
   }
 
   if (!eeResult.data) {

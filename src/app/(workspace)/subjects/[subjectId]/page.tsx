@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   SubjectWorkspace,
+  type CurriculumDocumentItem,
   type IAItem,
 } from "@/components/curriculum/curriculum-controls";
 import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { createClient } from "@/lib/local/client";
 
 interface SubjectPageProps {
@@ -51,7 +53,8 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
   if (!subject) notFound();
   const subjectDetail = subject as SubjectDetail;
 
-  const [notesResult, syllabusResult, iaResult] = await Promise.all([
+  const [notesResult, syllabusResult, iaResult, documentsResult, driveStatus] =
+    await Promise.all([
     local
       .from("notes")
       .select("id, title, updated_at, folder_path")
@@ -69,6 +72,13 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
       .eq("user_id", user.id)
       .eq("subject_id", subjectId)
       .single(),
+    local
+      .from("curriculum_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("subject_id", subjectId)
+      .order("created_at", { ascending: false }),
+    getGoogleDriveStatus(user.id),
   ]);
 
   return (
@@ -116,6 +126,8 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
         notes={(notesResult.data ?? []) as SubjectNote[]}
         syllabus={(syllabusResult.data ?? []) as SyllabusItem[]}
         ia={iaResult.data as IAItem | null}
+        documents={(documentsResult.data ?? []) as CurriculumDocumentItem[]}
+        driveStatus={driveStatus}
       />
     </div>
   );

@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/local/client";
 import { getWorkspaceProfile, requireUser } from "@/lib/auth";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
+import { GoogleDriveCard } from "@/components/settings/google-drive-card";
 import { WorkspaceResetDialog } from "@/components/settings/workspace-reset-dialog";
 
 type SettingsSubject = {
@@ -13,13 +15,14 @@ export default async function SettingsPage() {
   const user = await requireUser();
   const local = await createClient();
 
-  const [profile, subjectsResult] = await Promise.all([
+  const [profile, subjectsResult, driveStatus] = await Promise.all([
     getWorkspaceProfile(user.id),
     local
       .from("user_subjects")
       .select("id, subject_name, level, subject_group")
       .eq("user_id", user.id)
       .order("subject_group"),
+    getGoogleDriveStatus(user.id),
   ]);
 
   const subjects = (subjectsResult.data ?? []) as SettingsSubject[];
@@ -64,6 +67,8 @@ export default async function SettingsPage() {
           ))}
         </div>
       </section>
+
+      <GoogleDriveCard status={driveStatus} />
 
       {/* Workspace Reset */}
       <section className="bg-surface-1 border border-destructive/30 rounded-lg p-5 space-y-3">

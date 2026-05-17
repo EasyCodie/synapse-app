@@ -1,11 +1,14 @@
 "use client";
 
 import { FormEvent, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Check,
   ClipboardList,
+  Cloud,
+  ExternalLink,
   FileText,
+  Link2,
   Plus,
   Save,
   Trash2,
@@ -47,6 +50,21 @@ type Milestone = {
   title: string;
   order?: number;
   completed?: boolean;
+};
+
+export type DriveStatus = {
+  configured: boolean;
+  connected: boolean;
+};
+
+export type CurriculumDocumentItem = {
+  id: string;
+  owner_type: "subject" | "ia" | "ee" | "tok" | "cas";
+  owner_id: string;
+  subject_id?: string | null;
+  title: string;
+  document_url: string;
+  created_at: string;
 };
 
 export type IAItem = {
@@ -189,11 +207,15 @@ export function SubjectWorkspace({
   notes,
   syllabus,
   ia,
+  documents,
+  driveStatus,
 }: {
   subject: SubjectDetail;
   notes: NoteItem[];
   syllabus: SyllabusItem[];
   ia: IAItem | null;
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
 }) {
   const [noteTitle, setNoteTitle] = useState("");
   const { error, isPending, mutate } = useMutation();
@@ -334,10 +356,24 @@ export function SubjectWorkspace({
           </div>
         </section>
 
+        <DriveDocumentPanel
+          ownerType="subject"
+          ownerId={subject.id}
+          title="Google Docs"
+          defaultTitle={`${subject.subject_name} Notes`}
+          documents={documents.filter((document) => document.owner_type === "subject")}
+          driveStatus={driveStatus}
+        />
+
         <section className="rounded-lg border border-hairline bg-surface-1 p-5">
           <h2 className="text-card-title text-ink">Internal Assessment</h2>
           {ia ? (
-            <IAQuickEditor ia={ia} compact />
+            <IAQuickEditor
+              ia={ia}
+              compact
+              documents={documents.filter((document) => document.owner_id === ia.id)}
+              driveStatus={driveStatus}
+            />
           ) : (
             <p className="mt-3 text-body-sm text-ink-subtle">
               No IA tracker exists for {subject.subject_name}.
@@ -350,7 +386,187 @@ export function SubjectWorkspace({
   );
 }
 
-export function IAQuickEditor({ ia, compact = false }: { ia: IAItem; compact?: boolean }) {
+export function DriveDocumentPanel({
+  ownerType,
+  ownerId,
+  title,
+  defaultTitle,
+  documents,
+  driveStatus,
+}: {
+  ownerType: CurriculumDocumentItem["owner_type"];
+  ownerId: string;
+  title: string;
+  defaultTitle: string;
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
+}) {
+  const pathname = usePathname();
+  const { error, isPending, mutate } = useMutation();
+  const [linkUrl, setLinkUrl] = useState("");
+  const [docTitle, setDocTitle] = useState(defaultTitle);
+
+  function createDocument() {
+    mutate(async () => {
+      await requestJson("/api/curriculum/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "create",
+          owner_type: ownerType,
+          owner_id: ownerId,
+          title: docTitle,
+        }),
+      });
+    });
+  }
+
+  function linkDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!linkUrl.trim()) return;
+    mutate(async () => {
+      await requestJson("/api/curriculum/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "link",
+          owner_type: ownerType,
+          owner_id: ownerId,
+          title: docTitle,
+          document_url: linkUrl,
+        }),
+      });
+      setLinkUrl("");
+    });
+  }
+
+  function unlinkDocument(id: string) {
+    mutate(async () => {
+      const response = await fetch(`/api/curriculum/documents?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Could not unlink document");
+    });
+  }
+
+  return (
+    <section className="rounded-lg border border-hairline bg-surface-1 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-card-title text-ink">{title}</h2>
+          <p className="mt-1 text-caption text-ink-subtle">
+            Create or attach the Google document for this work.
+          </p>
+        </div>
+        <Cloud className="h-4 w-4 text-primary" />
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <input
+          value={docTitle}
+          onChange={(event) => setDocTitle(event.target.value)}
+          className={fieldClass}
+          placeholder="Document title"
+        />
+        <div className="flex flex-wrap gap-2">
+          {driveStatus.configured && driveStatus.connected ? (
+            <button
+              type="button"
+              disabled={isPending || !docTitle.trim()}
+              onClick={createDocument}
+              className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+            >
+              <Plus className="h-4 w-4" />
+              Create Doc
+            </button>
+          ) : driveStatus.configured ? (
+            <a
+              href={`/api/integrations/google/connect?returnTo=${encodeURIComponent(pathname)}`}
+              className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+            >
+              <Cloud className="h-4 w-4" />
+              Connect Drive
+            </a>
+          ) : (
+            <p className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-caption text-ink-subtle">
+              Add Google OAuth environment variables to enable document creation.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <form onSubmit={linkDocument} className="mt-3 flex gap-2">
+        <input
+          value={linkUrl}
+          onChange={(event) => setLinkUrl(event.target.value)}
+          className={fieldClass}
+          placeholder="Paste Google Docs URL"
+        />
+        <button
+          type="submit"
+          disabled={isPending || !linkUrl.trim()}
+          className={cn(buttonClass, "border border-hairline bg-surface-2 text-ink hover:border-hairline-strong")}
+          aria-label="Link Google Doc"
+        >
+          <Link2 className="h-4 w-4" />
+        </button>
+      </form>
+
+      <div className="mt-4 space-y-2">
+        {documents.length === 0 ? (
+          <p className="text-body-sm text-ink-subtle">No Google Docs linked yet.</p>
+        ) : (
+          documents.map((document) => (
+            <div
+              key={document.id}
+              className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-surface-2 px-3 py-2"
+            >
+              <a
+                href={document.document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 text-body-sm text-ink transition-colors duration-200 hover:text-primary"
+              >
+                <span className="truncate">{document.title}</span>
+              </a>
+              <div className="flex shrink-0 items-center gap-1">
+                <a
+                  href={document.document_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
+                  aria-label="Open Google Doc"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => unlinkDocument(document.id)}
+                  className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
+                  aria-label="Unlink Google Doc"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <ErrorLine message={error} />
+    </section>
+  );
+}
+
+export function IAQuickEditor({
+  ia,
+  compact = false,
+  documents = [],
+  driveStatus = { configured: false, connected: false },
+}: {
+  ia: IAItem;
+  compact?: boolean;
+  documents?: CurriculumDocumentItem[];
+  driveStatus?: DriveStatus;
+}) {
   const { error, isPending, mutate } = useMutation();
   const [title, setTitle] = useState(ia.title ?? "");
   const [researchQuestion, setResearchQuestion] = useState(ia.research_question ?? "");
@@ -504,6 +720,14 @@ export function IAQuickEditor({ ia, compact = false }: { ia: IAItem; compact?: b
         <Save className="h-4 w-4" />
         Save IA
       </button>
+      <DriveDocumentPanel
+        ownerType="ia"
+        ownerId={ia.id}
+        title="IA Document"
+        defaultTitle={title || "Internal Assessment"}
+        documents={documents}
+        driveStatus={driveStatus}
+      />
       <ErrorLine message={error} />
     </div>
   );
@@ -512,9 +736,13 @@ export function IAQuickEditor({ ia, compact = false }: { ia: IAItem; compact?: b
 export function IAManagerBoard({
   ias,
   subjects,
+  documents,
+  driveStatus,
 }: {
   ias: IAItem[];
   subjects: SubjectSummary[];
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
 }) {
   const subjectMap = new Map(subjects.map((subject) => [subject.id, subject]));
   const [selectedId, setSelectedId] = useState(ias[0]?.id ?? null);
@@ -583,7 +811,12 @@ export function IAManagerBoard({
           <h2 className="text-card-title text-ink">Selected IA</h2>
         </div>
         {selected ? (
-          <IAQuickEditor ia={selected} compact />
+          <IAQuickEditor
+            ia={selected}
+            compact
+            documents={documents.filter((document) => document.owner_id === selected.id)}
+            driveStatus={driveStatus}
+          />
         ) : (
           <p className="mt-3 text-body-sm text-ink-subtle">
             Select an IA to edit its project details.
@@ -594,7 +827,15 @@ export function IAManagerBoard({
   );
 }
 
-export function EEEditor({ ee }: { ee: EETracker }) {
+export function EEEditor({
+  ee,
+  documents,
+  driveStatus,
+}: {
+  ee: EETracker;
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
+}) {
   const { error, isPending, mutate } = useMutation();
   const [title, setTitle] = useState(ee.title ?? "");
   const [subject, setSubject] = useState(ee.subject ?? "");
@@ -685,6 +926,14 @@ export function EEEditor({ ee }: { ee: EETracker }) {
           ))}
         </div>
       </aside>
+      <DriveDocumentPanel
+        ownerType="ee"
+        ownerId={ee.id}
+        title="EE Document"
+        defaultTitle={title || "Extended Essay"}
+        documents={documents}
+        driveStatus={driveStatus}
+      />
     </div>
   );
 }
@@ -707,7 +956,15 @@ function normalizeEeMilestones(raw: EETracker["milestones"]): Milestone[] {
   return raw as Milestone[];
 }
 
-export function TOKEditor({ tok }: { tok: TOKTracker }) {
+export function TOKEditor({
+  tok,
+  documents,
+  driveStatus,
+}: {
+  tok: TOKTracker;
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
+}) {
   const { error, isPending, mutate } = useMutation();
   const [prescribedTitle, setPrescribedTitle] = useState(tok.prescribed_title ?? "");
   const [essayTitle, setEssayTitle] = useState(tok.essay_title ?? "");
@@ -778,11 +1035,28 @@ export function TOKEditor({ tok }: { tok: TOKTracker }) {
           ))}
         </div>
       </section>
+
+      <DriveDocumentPanel
+        ownerType="tok"
+        ownerId={tok.id}
+        title="TOK Document"
+        defaultTitle={essayTitle || "Theory of Knowledge"}
+        documents={documents}
+        driveStatus={driveStatus}
+      />
     </div>
   );
 }
 
-export function CASEditor({ experiences }: { experiences: CASExperience[] }) {
+export function CASEditor({
+  experiences,
+  documents,
+  driveStatus,
+}: {
+  experiences: CASExperience[];
+  documents: CurriculumDocumentItem[];
+  driveStatus: DriveStatus;
+}) {
   const { error, isPending, mutate } = useMutation();
   const [title, setTitle] = useState("");
   const [type, setType] = useState<(typeof CAS_TYPES)[number]>("creativity");
@@ -821,19 +1095,29 @@ export function CASEditor({ experiences }: { experiences: CASExperience[] }) {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-      <form onSubmit={createExperience} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-5">
-        <h2 className="text-card-title text-ink">New Experience</h2>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Experience title" className={fieldClass} />
-        <select value={type} onChange={(e) => setType(e.target.value as (typeof CAS_TYPES)[number])} className={fieldClass}>
-          {CAS_TYPES.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
-        </select>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Reflection or evidence notes" rows={4} className={fieldClass} />
-        <button type="submit" disabled={isPending || !title.trim()} className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}>
-          <Plus className="h-4 w-4" />
-          Add CAS
-        </button>
-        <ErrorLine message={error} />
-      </form>
+      <div className="space-y-4">
+        <form onSubmit={createExperience} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-5">
+          <h2 className="text-card-title text-ink">New Experience</h2>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Experience title" className={fieldClass} />
+          <select value={type} onChange={(e) => setType(e.target.value as (typeof CAS_TYPES)[number])} className={fieldClass}>
+            {CAS_TYPES.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
+          </select>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Reflection or evidence notes" rows={4} className={fieldClass} />
+          <button type="submit" disabled={isPending || !title.trim()} className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}>
+            <Plus className="h-4 w-4" />
+            Add CAS
+          </button>
+          <ErrorLine message={error} />
+        </form>
+        <DriveDocumentPanel
+          ownerType="cas"
+          ownerId="cas"
+          title="CAS Portfolio"
+          defaultTitle="CAS Portfolio"
+          documents={documents}
+          driveStatus={driveStatus}
+        />
+      </div>
 
       <div className="space-y-2">
         {experiences.length === 0 ? (

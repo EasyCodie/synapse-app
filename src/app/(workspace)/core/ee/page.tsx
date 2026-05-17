@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { EEEditor } from "@/components/curriculum/curriculum-controls";
+import {
+  EEEditor,
+  type CurriculumDocumentItem,
+} from "@/components/curriculum/curriculum-controls";
 import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { createClient } from "@/lib/local/client";
 
 export default async function EEPage() {
@@ -9,11 +13,16 @@ export default async function EEPage() {
   await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
-  const { data: ee } = await local
-    .from("ee_tracker")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const [eeResult, documentsResult, driveStatus] = await Promise.all([
+    local.from("ee_tracker").select("*").eq("user_id", user.id).single(),
+    local
+      .from("curriculum_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("owner_type", "ee")
+      .order("created_at", { ascending: false }),
+    getGoogleDriveStatus(user.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -35,7 +44,13 @@ export default async function EEPage() {
         </p>
       </div>
 
-      {ee && <EEEditor ee={ee} />}
+      {eeResult.data && (
+        <EEEditor
+          ee={eeResult.data}
+          documents={(documentsResult.data ?? []) as CurriculumDocumentItem[]}
+          driveStatus={driveStatus}
+        />
+      )}
     </div>
   );
 }

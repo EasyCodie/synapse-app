@@ -39,7 +39,7 @@ async function generateConversationTitle(openai: OpenAI, message: string) {
         {
           role: "system",
           content:
-            "Generate a concise chat title for an IB student conversation. Return only the title, no quotes, no punctuation at the end. Use 3-6 words.",
+            "Generate a concise chat title for the conversation. Return only the title, no quotes, no punctuation at the end. Use 3-6 words.",
         },
         { role: "user", content: message.slice(0, 1200) },
       ],

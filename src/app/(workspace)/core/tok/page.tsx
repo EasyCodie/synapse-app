@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { TOKEditor } from "@/components/curriculum/curriculum-controls";
+import {
+  TOKEditor,
+  type CurriculumDocumentItem,
+} from "@/components/curriculum/curriculum-controls";
 import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { createClient } from "@/lib/local/client";
 
 export default async function TOKPage() {
@@ -9,11 +13,16 @@ export default async function TOKPage() {
   await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
-  const { data: tok } = await local
-    .from("tok_tracker")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const [tokResult, documentsResult, driveStatus] = await Promise.all([
+    local.from("tok_tracker").select("*").eq("user_id", user.id).single(),
+    local
+      .from("curriculum_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("owner_type", "tok")
+      .order("created_at", { ascending: false }),
+    getGoogleDriveStatus(user.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -34,7 +43,13 @@ export default async function TOKPage() {
         </p>
       </div>
 
-      {tok && <TOKEditor tok={tok} />}
+      {tokResult.data && (
+        <TOKEditor
+          tok={tokResult.data}
+          documents={(documentsResult.data ?? []) as CurriculumDocumentItem[]}
+          driveStatus={driveStatus}
+        />
+      )}
     </div>
   );
 }
