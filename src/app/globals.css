@@ -27,9 +27,9 @@
   --brand-secure: #7a7fad;
 
   /* shadcn/ui token overrides — mapped to Synapse tokens */
-  --background: #010102;
+  --background: #0f1011;
   --foreground: #f7f8f8;
-  --card: #0f1011;
+  --card: #141516;
   --card-foreground: #f7f8f8;
   --popover: #141516;
   --popover-foreground: #f7f8f8;
@@ -48,11 +48,11 @@
   --radius: 0.5rem; /* 8px = rounded-md base */
 
   /* Sidebar tokens */
-  --sidebar: #0f1011;
+  --sidebar: #010102;
   --sidebar-foreground: #f7f8f8;
   --sidebar-primary: #5e6ad2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #141516;
+  --sidebar-accent: #0f1011;
   --sidebar-accent-foreground: #f7f8f8;
   --sidebar-border: #23252a;
   --sidebar-ring: #5e6ad2;
@@ -164,7 +164,7 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--canvas);
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: var(--hairline-strong);
@@ -255,6 +255,27 @@
     font-size: 13px;
     font-weight: 400;
     line-height: 1.50;
+    letter-spacing: 0;
+  }
+
+  /* Compact workspace typography (Linear-density) */
+  .text-title-compact {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.30;
+    letter-spacing: -0.2px;
+  }
+  .text-section-label {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.30;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .text-cell {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.40;
     letter-spacing: 0;
   }
 

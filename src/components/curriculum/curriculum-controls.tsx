@@ -55,6 +55,7 @@ type Milestone = {
 export type DriveStatus = {
   configured: boolean;
   connected: boolean;
+  needsRefresh?: boolean;
 };
 
 export type CurriculumDocumentItem = {

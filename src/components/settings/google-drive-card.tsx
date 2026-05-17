@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Cloud, Unplug } from "lucide-react";
+import { AlertCircle, Cloud, RefreshCw, Unplug } from "lucide-react";
 import type { DriveStatus } from "@/components/curriculum/curriculum-controls";
 import { cn } from "@/lib/utils";
 
@@ -35,12 +35,20 @@ export function GoogleDriveCard({ status }: { status: DriveStatus }) {
     });
   }
 
+  const statusText = !status.configured
+    ? "OAuth environment variables missing"
+    : status.connected
+      ? "Connected"
+      : status.needsRefresh
+        ? "Connection expired — please reconnect"
+        : "Ready to connect";
+
   return (
-    <section className="space-y-4 rounded-lg border border-hairline bg-surface-1 p-5">
+    <section className="space-y-4 rounded-lg border border-hairline bg-canvas p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-card-title text-ink">Google Drive</h2>
-          <p className="mt-1 text-body-sm text-ink-subtle">
+          <h2 className="text-cell font-medium text-ink">Google Drive</h2>
+          <p className="mt-1 text-cell text-ink-subtle">
             Create and attach Google Docs for subjects, IAs, EE, TOK, and CAS.
           </p>
         </div>
@@ -48,31 +56,39 @@ export function GoogleDriveCard({ status }: { status: DriveStatus }) {
       </div>
 
       <div className="rounded-md border border-hairline bg-surface-2 px-3 py-2">
-        <p className="text-caption text-ink-subtle">Status</p>
-        <p className="mt-0.5 text-body-sm text-ink">
-          {!status.configured
-            ? "OAuth environment variables missing"
-            : status.connected
-              ? "Connected"
-              : "Ready to connect"}
+        <p className="text-[11px] text-ink-tertiary">Status</p>
+        <p className={cn(
+          "mt-0.5 text-cell",
+          status.needsRefresh ? "text-primary" : "text-ink"
+        )}>
+          {statusText}
         </p>
       </div>
 
       {googleErrorMessage && (
-        <div className="flex gap-2 rounded-md border border-hairline-strong bg-surface-2 px-3 py-2 text-body-sm text-ink-muted">
+        <div className="flex gap-2 rounded-md border border-hairline-strong bg-surface-2 px-3 py-2 text-cell text-ink-muted">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p>{googleErrorMessage}</p>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        {status.configured && !status.connected && (
+        {status.configured && !status.connected && !status.needsRefresh && (
           <a
             href="/api/integrations/google/connect?returnTo=%2Fsettings"
             className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
           >
             <Cloud className="h-4 w-4" />
             Connect Drive
+          </a>
+        )}
+        {status.configured && status.needsRefresh && (
+          <a
+            href="/api/integrations/google/connect?returnTo=%2Fsettings"
+            className={cn(buttonClass, "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20")}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reconnect Drive
           </a>
         )}
         {status.connected && (

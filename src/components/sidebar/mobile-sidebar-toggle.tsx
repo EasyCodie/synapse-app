@@ -16,7 +16,7 @@ export function MobileSidebarToggle({ userEmail, userName }: MobileSidebarToggle
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-canvas border-b border-hairline flex items-center px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-surface-1 border-b border-hairline flex items-center px-4">
         <button
           onClick={() => setOpen(true)}
           className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors duration-200"
@@ -37,7 +37,7 @@ export function MobileSidebarToggle({ userEmail, userName }: MobileSidebarToggle
       />
       <aside
         className={cn(
-          "md:hidden fixed left-0 top-0 bottom-0 z-50 w-64 bg-surface-1 border-r border-hairline flex flex-col transition-transform duration-300 ease-out",
+          "md:hidden fixed left-0 top-0 bottom-0 z-50 w-64 bg-canvas border-r border-hairline flex flex-col transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >

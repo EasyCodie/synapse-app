@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { promises as fs } from "fs";
+import path from "path";
 import { createClient } from "@/lib/local/client";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -12,6 +14,43 @@ const GOOGLE_SCOPES = [
 ];
 
 export const GOOGLE_PROVIDER = "google_drive";
+
+// ─── Connection State Persistence ("Memory") ─────────────────────────────────
+// A lightweight state file that remembers the connection independent of the
+// encrypted token in db.json. Survives dev-server restarts, HMR, and
+// transient db.json write failures.
+const STATE_DIR = path.join(process.cwd(), ".synapse-data");
+const STATE_FILE = path.join(STATE_DIR, "google-drive-state.json");
+
+type ConnectionState = {
+  connected: boolean;
+  userId: string;
+  connectedAt: string;
+  email?: string;
+};
+
+async function readConnectionState(): Promise<ConnectionState | null> {
+  try {
+    const raw = await fs.readFile(STATE_FILE, "utf8");
+    return JSON.parse(raw) as ConnectionState;
+  } catch {
+    return null;
+  }
+}
+
+async function writeConnectionState(state: ConnectionState | null): Promise<void> {
+  try {
+    await fs.mkdir(STATE_DIR, { recursive: true });
+    if (state === null) {
+      await fs.rm(STATE_FILE, { force: true });
+    } else {
+      await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+    }
+  } catch (err) {
+    console.warn("[google-drive] Failed to write connection state:", err);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 type GoogleConfig = {
   clientId: string;
@@ -226,7 +265,7 @@ export async function saveGoogleIntegration(userId: string, tokens: TokenRespons
   }
 
   const local = await createClient();
-  const now = new Date().toISOString();
+  const nowStr = new Date().toISOString();
   await local.from("integrations").upsert(
     {
       user_id: userId,
@@ -234,10 +273,23 @@ export async function saveGoogleIntegration(userId: string, tokens: TokenRespons
       encrypted_refresh_token: encryptToken(refreshToken, config.tokenKey),
       scopes: tokens.scope?.split(" ") ?? GOOGLE_SCOPES,
       metadata: {},
-      updated_at: now,
+      updated_at: nowStr,
     },
     { onConflict: "user_id,provider" }
   );
+
+  // Persist lightweight connection state (survives dev-server restarts)
+  await writeConnectionState({
+    connected: true,
+    userId,
+    connectedAt: nowStr,
+  });
+
+  // Verify the write succeeded by reading back
+  const verification = await getGoogleIntegration(userId);
+  if (!verification) {
+    console.error("[google-drive] WARNING: Integration write did not persist to db.json");
+  }
 }
 
 export async function getGoogleIntegration(userId: string) {
@@ -252,10 +304,45 @@ export async function getGoogleIntegration(userId: string) {
 }
 
 export async function getGoogleDriveStatus(userId: string) {
-  return {
-    configured: isGoogleDriveConfigured(),
-    connected: Boolean(await getGoogleIntegration(userId)),
-  };
+  const configured = isGoogleDriveConfigured();
+  if (!configured) {
+    return { configured: false, connected: false, needsRefresh: false };
+  }
+
+  // Primary check: integration row in db.json
+  let connected = false;
+  let needsRefresh = false;
+  try {
+    const integration = await getGoogleIntegration(userId);
+    if (integration) {
+      // Verify we can still decrypt the token (catches key changes)
+      const config = getGoogleConfig();
+      if (config) {
+        try {
+          decryptToken(integration.encrypted_refresh_token, config.tokenKey);
+          connected = true;
+        } catch {
+          // Token exists but can't be decrypted — key likely changed
+          needsRefresh = true;
+          console.warn("[google-drive] Stored token cannot be decrypted. Encryption key may have changed.");
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[google-drive] Error reading integration from db:", err);
+  }
+
+  // Fallback: check the lightweight state file if db didn't find it
+  if (!connected && !needsRefresh) {
+    const state = await readConnectionState();
+    if (state?.connected && state.userId === userId) {
+      // State file remembers a connection but db.json doesn't have it
+      // This means the db write failed previously — flag for reconnection
+      needsRefresh = true;
+    }
+  }
+
+  return { configured, connected, needsRefresh };
 }
 
 export async function disconnectGoogleDrive(userId: string) {
@@ -265,6 +352,9 @@ export async function disconnectGoogleDrive(userId: string) {
     .delete()
     .eq("user_id", userId)
     .eq("provider", GOOGLE_PROVIDER);
+
+  // Clear the connection state memory
+  await writeConnectionState(null);
 }
 
 async function getGoogleAccessToken(userId: string) {

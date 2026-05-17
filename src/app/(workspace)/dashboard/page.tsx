@@ -8,10 +8,8 @@ import {
   ClipboardList,
   GraduationCap,
   Plus,
-  ArrowRight,
   Upload,
   Sparkles,
-  Clock,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 
@@ -84,239 +82,255 @@ export default async function DashboardPage() {
   const flashcardCount = flashcardsCountResult.count ?? 0;
   const dueFlashcards = dueFlashcardsResult.count ?? 0;
 
+  // Build subject lookup map (O(1) per lookup)
+  const subjectById = new Map(subjects.map((s) => [s.id, s]));
+
   const greeting = getGreeting();
   const today = format(now, "EEEE, MMMM d");
-
-  // Calculate exam countdown
   const examCountdown = getExamCountdown(profile?.exam_session);
 
   return (
-    <div className="space-y-8">
-      {/* Header with greeting + exam countdown */}
-      <div className="flex items-start justify-between">
+    <div className="space-y-4">
+      {/* Header row — greeting + actions */}
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-eyebrow text-ink-subtle mb-1">{today}</p>
-          <h1 className="text-headline text-ink">
+          <h1 className="text-title-compact text-ink">
             {greeting}, {profile?.full_name?.split(" ")[0] ?? "there"}
           </h1>
-          <p className="text-body-sm text-ink-subtle mt-1">
-            {profile?.exam_session && <>{profile.exam_session} · </>}
-            {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
-            {openTaskCount > 0 && (
-              <> · <span className="text-ink-muted">{openTaskCount} task{openTaskCount !== 1 ? "s" : ""} due</span></>
-            )}
+          <p className="text-cell text-ink-tertiary mt-0.5">
+            {today}
+            {profile?.exam_session ? <> · {profile.exam_session}</> : null}
+            {examCountdown !== null ? (
+              <> · <span className="text-ink-subtle">{examCountdown}d to exams</span></>
+            ) : null}
           </p>
         </div>
-        {examCountdown !== null && (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-surface-1 border border-hairline rounded-lg">
-            <Clock className="w-4 h-4 text-primary" />
-            <div>
-              <p className="text-caption text-ink-muted">Exams in</p>
-              <p className="text-body-sm font-medium text-ink">{examCountdown} days</p>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Quick actions */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Link
-          href="/calendar"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-surface-1 border border-hairline rounded-md text-body-sm text-ink-subtle hover:text-ink hover:border-hairline-strong transition-all duration-200"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Task
-        </Link>
-        <Link
-          href="/chat"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-surface-1 border border-hairline rounded-md text-body-sm text-ink-subtle hover:text-ink hover:border-hairline-strong transition-all duration-200"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          Ask Synapse
-        </Link>
-        <Link
-          href="/resources"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-surface-1 border border-hairline rounded-md text-body-sm text-ink-subtle hover:text-ink hover:border-hairline-strong transition-all duration-200"
-        >
-          <Upload className="w-3.5 h-3.5" />
-          Upload
-        </Link>
-        {dueFlashcards > 0 && (
+        {/* Quick actions */}
+        <div className="flex items-center gap-1.5">
           <Link
-            href="/flashcards"
-            className="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-md text-body-sm text-primary hover:bg-primary/15 transition-all duration-200"
+            href="/calendar"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
           >
-            <GraduationCap className="w-3.5 h-3.5" />
-            Review {dueFlashcards} card{dueFlashcards !== 1 ? "s" : ""}
+            <Plus className="w-3.5 h-3.5" />
+            Add Task
           </Link>
-        )}
+          <Link
+            href="/chat"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Ask Synapse
+          </Link>
+          <Link
+            href="/resources"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Upload
+          </Link>
+          {dueFlashcards > 0 ? (
+            <Link
+              href="/flashcards"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 bg-primary/5 text-cell font-medium text-primary hover:bg-primary/10 transition-colors"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              Review {dueFlashcards}
+            </Link>
+          ) : null}
+        </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+      {/* Stats row — individual bordered cells */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCell
           label="Subjects"
           value={subjects.length}
-          icon={BookOpen}
           sublabel={`${subjects.filter((s) => s.level === "HL").length} HL · ${subjects.filter((s) => s.level === "SL").length} SL`}
           href="/subjects"
         />
-        <StatCard
+        <StatCell
           label="Open Tasks"
           value={openTaskCount}
-          icon={CheckSquare}
           sublabel={openTaskCount > 0 ? "need attention" : "all clear"}
           href="/calendar"
-          accent={openTaskCount > 3}
+          isAlert={openTaskCount > 3}
         />
-        <StatCard
+        <StatCell
           label="IAs"
           value={ias.length}
-          icon={ClipboardList}
           sublabel={`${ias.filter((ia) => ia.status === "submitted").length} submitted`}
           href="/ia-manager"
         />
-        <StatCard
+        <StatCell
           label="Flashcards"
           value={flashcardCount}
-          icon={GraduationCap}
-          sublabel={dueFlashcards > 0 ? `${dueFlashcards} due for review` : "all reviewed"}
+          sublabel={dueFlashcards > 0 ? `${dueFlashcards} due` : "all reviewed"}
           href="/flashcards"
-          accent={dueFlashcards > 0}
+          isAlert={dueFlashcards > 0}
         />
       </div>
 
-      {/* Flashcard review CTA (prominent when cards are due) */}
-      {dueFlashcards > 0 && (
+      {/* Flashcard review notice */}
+      {dueFlashcards > 0 ? (
         <Link
           href="/flashcards"
-          className="flex items-center justify-between px-6 py-5 bg-primary/5 border border-primary/15 rounded-lg hover:bg-primary/8 hover:border-primary/25 transition-all duration-200 group"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/8 transition-colors"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-body-sm font-medium text-ink">
-                {dueFlashcards} flashcard{dueFlashcards !== 1 ? "s" : ""} ready for review
-              </p>
-              <p className="text-caption text-ink-subtle">
-                Keep your streak going — spaced repetition works best with daily reviews
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+          <span className="text-cell text-ink-subtle flex-1">
+            {dueFlashcards} card{dueFlashcards !== 1 ? "s" : ""} ready for
+            review
+          </span>
+          <span className="text-cell text-primary font-medium">
+            Review now →
+          </span>
         </Link>
-      )}
+      ) : null}
 
-      {/* Content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming tasks */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-card-title text-ink">Upcoming Tasks</h2>
-            <Link href="/calendar" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
-              View all
+      {/* Main content — two-column panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Tasks panel */}
+        <div className="rounded-lg border border-hairline bg-canvas">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
+            <h2 className="text-cell font-medium text-ink">Tasks</h2>
+            <Link
+              href="/calendar"
+              className="text-[11px] text-ink-tertiary hover:text-ink transition-colors"
+            >
+              View all →
             </Link>
           </div>
-          {tasks.length === 0 ? (
-            <EmptyState
-              icon={CheckSquare}
-              title="No upcoming tasks"
-              description="Create your first task to start tracking your IB deadlines."
-              action={{ label: "Add Task", href: "/calendar" }}
-              className="py-8"
-            />
-          ) : (
-            <div className="space-y-1">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-md hover:bg-surface-2/50 transition-colors duration-200"
-                >
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${priorityColor(task.priority)}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm text-ink truncate">{task.title}</p>
-                  </div>
-                  {task.due_date && (
-                    <span className="text-caption text-ink-tertiary shrink-0">
-                      {getRelativeDate(task.due_date)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* IA Progress */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-card-title text-ink">IA Progress</h2>
-            <Link href="/ia-manager" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
-              View all
-            </Link>
-          </div>
-          {ias.length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="No IAs tracked"
-              description="Internal Assessments are auto-generated from your subjects during onboarding."
-              className="py-8"
-            />
-          ) : (
-            <div className="space-y-1">
-              {ias.slice(0, 5).map((ia) => {
-                const subject = subjects.find((s) => s.id === ia.subject_id);
-                return (
-                  <div
-                    key={ia.id}
-                    className="flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-md hover:bg-surface-2/50 transition-colors duration-200"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body-sm text-ink truncate">
-                        {subject?.subject_name ?? "Unknown subject"}
-                      </p>
-                      <p className="text-caption text-ink-tertiary">
-                        {ia.title ?? "Untitled IA"}
-                      </p>
+          <div className="px-4 py-2">
+            {tasks.length === 0 ? (
+              <EmptyState
+                icon={CheckSquare}
+                title="No upcoming tasks"
+                description="Create your first task to start tracking deadlines."
+                action={{ label: "Add Task", href: "/calendar" }}
+                className="py-6"
+              />
+            ) : (
+              <div className="divide-y divide-hairline/40">
+                {tasks.map((task) => {
+                  const subject = subjectById.get(task.subject_id ?? "");
+                  const isOverdue = task.due_date
+                    ? differenceInDays(new Date(task.due_date), now) < 0
+                    : false;
+                  return (
+                    <div
+                      key={task.id}
+                      className="flex items-center gap-2.5 py-2 group"
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full shrink-0 ${priorityColor(task.priority)}`}
+                      />
+                      <span className="text-cell text-ink flex-1 truncate">
+                        {task.title}
+                      </span>
+                      {subject ? (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-2 text-ink-tertiary shrink-0">
+                          {subject.subject_name}
+                        </span>
+                      ) : null}
+                      {task.due_date ? (
+                        <span
+                          className={`text-[11px] shrink-0 tabular-nums ${isOverdue ? "text-destructive" : "text-ink-tertiary"}`}
+                        >
+                          {getRelativeDate(task.due_date)}
+                        </span>
+                      ) : null}
                     </div>
-                    <StatusBadge status={ia.status} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Subjects overview */}
-        <div className="bg-surface-1 border border-hairline rounded-lg p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-card-title text-ink">Your Subjects</h2>
-            <Link href="/subjects" className="text-caption text-primary hover:text-primary-hover transition-colors duration-200">
-              View all
+        {/* IAs panel */}
+        <div className="rounded-lg border border-hairline bg-canvas">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
+            <h2 className="text-cell font-medium text-ink">
+              Internal Assessments
+            </h2>
+            <Link
+              href="/ia-manager"
+              className="text-[11px] text-ink-tertiary hover:text-ink transition-colors"
+            >
+              View all →
             </Link>
           </div>
+          <div className="px-4 py-2">
+            {ias.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="No IAs tracked"
+                description="Internal Assessments are auto-generated during onboarding."
+                className="py-6"
+              />
+            ) : (
+              <div className="divide-y divide-hairline/40">
+                {ias.slice(0, 5).map((ia) => {
+                  const subject = subjectById.get(ia.subject_id ?? "");
+                  return (
+                    <div
+                      key={ia.id}
+                      className="flex items-center gap-2.5 py-2 group"
+                    >
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColor(ia.status)}`}
+                      />
+                      <span className="text-cell text-ink flex-1 truncate">
+                        {ia.title ?? "Untitled IA"}
+                      </span>
+                      {subject ? (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-2 text-ink-tertiary shrink-0">
+                          {subject.subject_name}
+                        </span>
+                      ) : null}
+                      <StatusBadge status={ia.status} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Subjects panel — full width */}
+      <div className="rounded-lg border border-hairline bg-canvas">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
+          <h2 className="text-cell font-medium text-ink">Subjects</h2>
+          <Link
+            href="/subjects"
+            className="text-[11px] text-ink-tertiary hover:text-ink transition-colors"
+          >
+            View all →
+          </Link>
+        </div>
+        <div className="px-4 py-3">
           {subjects.length === 0 ? (
             <EmptyState
               icon={BookOpen}
               title="No subjects yet"
               description="Complete onboarding to set up your IB subjects."
               action={{ label: "Go to onboarding", href: "/onboarding" }}
-              className="py-8"
+              className="py-6"
             />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="flex flex-wrap gap-2">
               {subjects.map((subject) => (
                 <Link
                   key={subject.id}
                   href={`/subjects/${subject.id}`}
-                  className="flex items-center justify-between px-4 py-3 bg-surface-2 border border-hairline rounded-md hover:border-hairline-strong transition-all duration-200 group"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-hairline bg-surface-1 text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
                 >
-                  <span className="text-body-sm text-ink truncate">
-                    {subject.subject_name}
-                  </span>
-                  <span className={`text-caption px-1.5 py-0.5 rounded-sm ml-2 shrink-0 ${subject.level === "HL" ? "bg-primary/10 text-primary" : "bg-surface-3 text-ink-subtle"}`}>
+                  {subject.subject_name}
+                  <span
+                    className={`text-[10px] font-medium px-1 py-0 rounded ${subject.level === "HL" ? "bg-primary/10 text-primary" : "bg-surface-3 text-ink-tertiary"}`}
+                  >
                     {subject.level}
                   </span>
                 </Link>
@@ -331,63 +345,71 @@ export default async function DashboardPage() {
 
 // ─── Helper Components ──────────────────────────────────────────────────────
 
-function StatCard({
+function StatCell({
   label,
   value,
-  icon: Icon,
   sublabel,
   href,
-  accent,
+  isAlert,
 }: {
   label: string;
-  value: string | number;
-  icon: React.ElementType;
+  value: number;
   sublabel?: string;
-  href?: string;
-  accent?: boolean;
+  href: string;
+  isAlert?: boolean;
 }) {
-  const content = (
-    <div className={`bg-surface-1 border rounded-lg p-6 transition-all duration-200 ${href ? "hover:border-hairline-strong hover:bg-surface-2/30 cursor-pointer" : ""} ${accent ? "border-primary/20" : "border-hairline"}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-8 h-8 rounded-md flex items-center justify-center ${accent ? "bg-primary/10" : "bg-surface-2"}`}>
-          <Icon className={`w-4 h-4 ${accent ? "text-primary" : "text-ink-subtle"}`} />
-        </div>
-        {href && (
-          <ArrowRight className="w-3.5 h-3.5 text-ink-tertiary opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-        )}
-      </div>
-      <p className="text-headline text-ink">{value}</p>
-      <div className="flex items-center justify-between mt-1">
-        <span className="text-caption text-ink-subtle">{label}</span>
-        {sublabel && <span className="text-caption text-ink-tertiary">{sublabel}</span>}
-      </div>
-    </div>
+  return (
+    <Link
+      href={href}
+      className="group rounded-lg border border-hairline bg-canvas px-4 py-3 hover:border-hairline-strong transition-colors"
+    >
+      <p className="text-[11px] text-ink-tertiary mb-1">{label}</p>
+      <p
+        className={`text-body-sm font-semibold ${isAlert ? "text-primary" : "text-ink"}`}
+      >
+        {value}
+      </p>
+      {sublabel ? (
+        <p className="text-[11px] text-ink-tertiary mt-0.5">{sublabel}</p>
+      ) : null}
+    </Link>
   );
-
-  if (href) {
-    return (
-      <Link href={href} className="group">
-        {content}
-      </Link>
-    );
-  }
-  return content;
 }
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    not_started: { label: "Not started", className: "bg-surface-3 text-ink-subtle" },
+    not_started: {
+      label: "Not started",
+      className: "bg-surface-3 text-ink-subtle",
+    },
     research: { label: "Research", className: "bg-primary/10 text-primary" },
     drafting: { label: "Drafting", className: "bg-primary/20 text-primary" },
-    revision: { label: "Revision", className: "bg-semantic-success/10 text-semantic-success" },
-    submitted: { label: "Submitted", className: "bg-semantic-success/20 text-semantic-success" },
+    revision: {
+      label: "Revision",
+      className: "bg-semantic-success/10 text-semantic-success",
+    },
+    submitted: {
+      label: "Submitted",
+      className: "bg-semantic-success/20 text-semantic-success",
+    },
   };
   const s = map[status] ?? map["not_started"]!;
   return (
-    <span className={`text-caption px-2 py-0.5 rounded-pill shrink-0 ${s.className}`}>
+    <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${s.className}`}>
       {s.label}
     </span>
   );
+}
+
+function statusDotColor(status: string): string {
+  const map: Record<string, string> = {
+    not_started: "bg-ink-tertiary",
+    research: "bg-primary/60",
+    drafting: "bg-primary",
+    revision: "bg-semantic-success/60",
+    submitted: "bg-semantic-success",
+  };
+  return map[status] ?? "bg-ink-tertiary";
 }
 
 function priorityColor(priority: string) {
@@ -418,15 +440,15 @@ function getRelativeDate(dateStr: string): string {
   return format(date, "MMM d");
 }
 
-function getExamCountdown(examSession: string | null | undefined): number | null {
+function getExamCountdown(
+  examSession: string | null | undefined
+): number | null {
   if (!examSession) return null;
-  // Parse exam session like "M25" or "N25"
   const match = examSession.match(/^([MN])(\d{2})$/);
   if (!match) return null;
   const [, session, yearStr] = match;
   const year = 2000 + parseInt(yearStr);
-  // May exams start ~May 1, November exams start ~Nov 1
-  const examMonth = session === "M" ? 4 : 10; // 0-indexed months
+  const examMonth = session === "M" ? 4 : 10;
   const examDate = new Date(year, examMonth, 1);
   const days = differenceInDays(examDate, new Date());
   return days > 0 ? days : null;
