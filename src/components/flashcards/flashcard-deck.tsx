@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FlashcardMarkdown } from "./flashcard-markdown";
 import { StudyMode } from "./study-mode";
 
 interface Flashcard {
@@ -430,18 +431,18 @@ function CompactCardRow({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-body-sm text-ink leading-snug">{card.front}</p>
+        <FlashcardMarkdown content={card.front} tone="compact" />
         <AnimatePresence>
           {showAnswer && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="text-body-sm text-ink-muted mt-1.5 leading-snug overflow-hidden"
+              className="mt-1.5 overflow-hidden"
             >
-              {card.back}
-            </motion.p>
+              <FlashcardMarkdown content={card.back} tone="compact-muted" />
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

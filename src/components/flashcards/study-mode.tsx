@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, ChevronLeft, ChevronRight, X, Trophy, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FlashcardMarkdown } from "./flashcard-markdown";
 
 interface Flashcard {
   id: string;
@@ -171,9 +172,7 @@ export function StudyMode({ cards, onRate, onClose }: StudyModeProps) {
                 style={{ backfaceVisibility: "hidden" }}
               >
                 <p className="text-eyebrow text-ink-tertiary mb-5">QUESTION</p>
-                <p className="text-card-title text-ink text-center leading-relaxed max-w-md">
-                  {currentCard.front}
-                </p>
+                <FlashcardMarkdown content={currentCard.front} tone="question" className="max-w-md" />
                 {currentCard.tags.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-6">
                     {currentCard.tags.slice(0, 3).map((tag) => (
@@ -195,9 +194,7 @@ export function StudyMode({ cards, onRate, onClose }: StudyModeProps) {
                 style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
               >
                 <p className="text-eyebrow text-primary mb-5">ANSWER</p>
-                <p className="text-body-lg text-ink text-center leading-relaxed max-w-md">
-                  {currentCard.back}
-                </p>
+                <FlashcardMarkdown content={currentCard.back} tone="answer" className="max-w-md" />
               </div>
             </motion.div>
           </motion.div>

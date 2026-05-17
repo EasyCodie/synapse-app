@@ -12,6 +12,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import {
+  DashboardMotion,
+  DashboardMotionItem,
+  DashboardMotionPanel,
+  DashboardMotionRow,
+} from "./dashboard-motion";
 
 type DashboardSubject = { id: string; subject_name: string; level: string };
 type DashboardTask = {
@@ -90,9 +96,9 @@ export default async function DashboardPage() {
   const examCountdown = getExamCountdown(profile?.exam_session);
 
   return (
-    <div className="space-y-4">
+    <DashboardMotion className="space-y-4">
       {/* Header row — greeting + actions */}
-      <div className="flex items-center justify-between">
+      <DashboardMotionItem className="flex items-center justify-between">
         <div>
           <h1 className="text-title-compact text-ink">
             {greeting}, {profile?.full_name?.split(" ")[0] ?? "there"}
@@ -139,10 +145,10 @@ export default async function DashboardPage() {
             </Link>
           ) : null}
         </div>
-      </div>
+      </DashboardMotionItem>
 
       {/* Stats row — individual bordered cells */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <DashboardMotionItem className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCell
           label="Subjects"
           value={subjects.length}
@@ -169,7 +175,7 @@ export default async function DashboardPage() {
           href="/flashcards"
           isAlert={dueFlashcards > 0}
         />
-      </div>
+      </DashboardMotionItem>
 
       {/* Flashcard review notice */}
       {dueFlashcards > 0 ? (
@@ -189,9 +195,9 @@ export default async function DashboardPage() {
       ) : null}
 
       {/* Main content — two-column panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <DashboardMotionItem className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Tasks panel */}
-        <div className="rounded-lg border border-hairline bg-canvas">
+        <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
           <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
             <h2 className="text-cell font-medium text-ink">Tasks</h2>
             <Link
@@ -218,7 +224,7 @@ export default async function DashboardPage() {
                     ? differenceInDays(new Date(task.due_date), now) < 0
                     : false;
                   return (
-                    <div
+                    <DashboardMotionRow
                       key={task.id}
                       className="flex items-center gap-2.5 py-2 group"
                     >
@@ -240,16 +246,16 @@ export default async function DashboardPage() {
                           {getRelativeDate(task.due_date)}
                         </span>
                       ) : null}
-                    </div>
+                    </DashboardMotionRow>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
+        </DashboardMotionPanel>
 
         {/* IAs panel */}
-        <div className="rounded-lg border border-hairline bg-canvas">
+        <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
           <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
             <h2 className="text-cell font-medium text-ink">
               Internal Assessments
@@ -274,7 +280,7 @@ export default async function DashboardPage() {
                 {ias.slice(0, 5).map((ia) => {
                   const subject = subjectById.get(ia.subject_id ?? "");
                   return (
-                    <div
+                    <DashboardMotionRow
                       key={ia.id}
                       className="flex items-center gap-2.5 py-2 group"
                     >
@@ -290,17 +296,17 @@ export default async function DashboardPage() {
                         </span>
                       ) : null}
                       <StatusBadge status={ia.status} />
-                    </div>
+                    </DashboardMotionRow>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </DashboardMotionPanel>
+      </DashboardMotionItem>
 
       {/* Subjects panel — full width */}
-      <div className="rounded-lg border border-hairline bg-canvas">
+      <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
         <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
           <h2 className="text-cell font-medium text-ink">Subjects</h2>
           <Link
@@ -338,8 +344,8 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DashboardMotionPanel>
+    </DashboardMotion>
   );
 }
 
@@ -359,20 +365,22 @@ function StatCell({
   isAlert?: boolean;
 }) {
   return (
-    <Link
-      href={href}
-      className="group rounded-lg border border-hairline bg-canvas px-4 py-3 hover:border-hairline-strong transition-colors"
-    >
-      <p className="text-[11px] text-ink-tertiary mb-1">{label}</p>
-      <p
-        className={`text-body-sm font-semibold ${isAlert ? "text-primary" : "text-ink"}`}
+    <DashboardMotionPanel>
+      <Link
+        href={href}
+        className="group block rounded-lg border border-hairline bg-canvas px-4 py-3 hover:border-hairline-strong transition-colors"
       >
-        {value}
-      </p>
-      {sublabel ? (
-        <p className="text-[11px] text-ink-tertiary mt-0.5">{sublabel}</p>
-      ) : null}
-    </Link>
+        <p className="text-[11px] text-ink-tertiary mb-1">{label}</p>
+        <p
+          className={`text-body-sm font-semibold ${isAlert ? "text-primary" : "text-ink"}`}
+        >
+          {value}
+        </p>
+        {sublabel ? (
+          <p className="text-[11px] text-ink-tertiary mt-0.5">{sublabel}</p>
+        ) : null}
+      </Link>
+    </DashboardMotionPanel>
   );
 }
 

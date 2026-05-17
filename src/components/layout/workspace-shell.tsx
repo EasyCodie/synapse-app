@@ -36,10 +36,10 @@ export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShell
   }
 
   return (
-    <div className="flex h-screen bg-surface-1 overflow-hidden">
+    <div className="flex h-screen bg-[#0F1010] overflow-hidden">
       {/* Sidebar — desktop */}
       <motion.aside
-        className="hidden md:flex shrink-0 flex-col bg-canvas border-r border-hairline overflow-hidden"
+        className="hidden md:flex shrink-0 flex-col bg-[#070707] border-r border-hairline overflow-hidden"
         animate={{ width: collapsed ? 52 : 204 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
@@ -58,7 +58,7 @@ export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShell
       />
 
       {/* Main content */}
-      <main className="relative flex-1 overflow-y-auto">
+      <main className="relative flex-1 overflow-y-auto bg-[#0F1010]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-5 lg:px-6 pt-5 pb-8">
           {children}
         </div>
