@@ -3,6 +3,7 @@ import { getWorkspaceProfile, requireUser } from "@/lib/auth";
 import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { GoogleDriveCard } from "@/components/settings/google-drive-card";
 import { WorkspaceResetDialog } from "@/components/settings/workspace-reset-dialog";
+import { WorkspaceExportButton } from "@/components/settings/workspace-export-button";
 
 type SettingsSubject = {
   id: string;
@@ -69,6 +70,15 @@ export default async function SettingsPage() {
       </section>
 
       <GoogleDriveCard status={driveStatus} />
+
+      <section className="bg-surface-1 border border-hairline rounded-lg p-5 space-y-3">
+        <h2 className="text-card-title text-ink">Local Backup</h2>
+        <p className="text-body-sm text-ink-subtle leading-relaxed">
+          Download a zip containing your local database, uploaded files, and an
+          export manifest.
+        </p>
+        <WorkspaceExportButton />
+      </section>
 
       {/* Workspace Reset */}
       <section className="bg-surface-1 border border-destructive/30 rounded-lg p-5 space-y-3">

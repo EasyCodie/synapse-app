@@ -4,6 +4,7 @@ import { Library } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { UploadResource } from "@/components/resources/upload-resource";
 import { DeleteResourceButton } from "@/components/resources/delete-resource-button";
+import { ReindexResourceButton } from "@/components/resources/reindex-resource-button";
 
 const TYPE_LABELS: Record<string, string> = {
   pdf: "PDF",
@@ -29,6 +30,9 @@ type ResourceItem = {
   subject_id: string | null;
   created_at: string;
   file_size: number | null;
+  extraction_status?: string | null;
+  indexing_status?: string | null;
+  last_index_error?: string | null;
 };
 type ResourceSubject = { id: string; subject_name: string };
 type IndexedResource = { source_id: string };
@@ -40,7 +44,7 @@ export default async function ResourcesPage() {
   const [resourcesResult, subjectsResult] = await Promise.all([
     local
       .from("resources")
-      .select("id, title, type, tags, subject_id, created_at, file_size")
+      .select("id, title, type, tags, subject_id, created_at, file_size, extraction_status, indexing_status, last_index_error")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     local
@@ -96,6 +100,10 @@ export default async function ResourcesPage() {
         <div className="space-y-2">
           {resources.map((resource, i) => {
             const isIndexed = indexedIds.has(resource.id);
+            const indexStatus = isIndexed
+              ? "indexed"
+              : resource.indexing_status ?? "not_started";
+            const extractionStatus = resource.extraction_status ?? "extracted";
             return (
               <div
                 key={resource.id}
@@ -133,10 +141,23 @@ export default async function ResourcesPage() {
                     )}
                     {/* Indexed status */}
                     <span className="text-ink-tertiary">·</span>
-                    <span className={`text-caption ${isIndexed ? "text-semantic-success" : "text-ink-tertiary"}`}>
-                      {isIndexed ? "Indexed" : "Not indexed"}
+                    <span className={`text-caption ${indexStatus === "indexed" ? "text-semantic-success" : indexStatus === "failed" ? "text-destructive" : "text-ink-tertiary"}`}>
+                      {formatStatus(indexStatus)}
                     </span>
+                    {extractionStatus !== "extracted" && (
+                      <>
+                        <span className="text-ink-tertiary">Â·</span>
+                        <span className="text-caption text-ink-tertiary">
+                          {formatStatus(extractionStatus)}
+                        </span>
+                      </>
+                    )}
                   </div>
+                  {resource.last_index_error && (
+                    <p className="mt-1 truncate text-caption text-ink-tertiary">
+                      {resource.last_index_error}
+                    </p>
+                  )}
                 </div>
 
                 {/* Tags */}
@@ -157,7 +178,8 @@ export default async function ResourcesPage() {
                 </span>
 
                 {/* Delete — revealed on hover */}
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <ReindexResourceButton resourceId={resource.id} />
                   <DeleteResourceButton resourceId={resource.id} />
                 </div>
               </div>
@@ -173,6 +195,12 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatStatus(status: string) {
+  return status
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatRelativeDate(dateStr: string): string {

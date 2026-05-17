@@ -73,12 +73,42 @@ export async function POST(request: Request) {
     const { error } = await local.from("embeddings").insert(embeddingRows);
 
     if (error) {
+      if (source_type === "resource") {
+        await local
+          .from("resources")
+          .update({ indexing_status: "failed", last_index_error: error.message })
+          .eq("id", source_id)
+          .eq("user_id", user.id);
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (source_type === "resource") {
+      await local
+        .from("resources")
+        .update({
+          indexing_status: "indexed",
+          indexed_at: new Date().toISOString(),
+          last_index_error: null,
+        })
+        .eq("id", source_id)
+        .eq("user_id", user.id);
     }
 
     return NextResponse.json({ success: true, chunks: embeddingRows.length });
   } catch (err) {
     console.error("Embedding error:", err);
+    if (source_type === "resource") {
+      await local
+        .from("resources")
+        .update({
+          indexing_status: "failed",
+          last_index_error:
+            err instanceof Error ? err.message : "Embedding generation failed",
+        })
+        .eq("id", source_id)
+        .eq("user_id", user.id);
+    }
     return NextResponse.json({ error: "Embedding generation failed" }, { status: 500 });
   }
 }

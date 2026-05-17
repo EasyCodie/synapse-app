@@ -3,6 +3,8 @@ import {
   CHAT_ATTACHMENT_ALLOWED_MIME_TYPES,
   CHAT_ATTACHMENT_MAX_BYTES,
   extractResourceText,
+  getExtractionStatus,
+  getIndexingStatus,
   getResourceType,
   isAllowedMimeType,
   RESOURCE_BUCKET,
@@ -64,6 +66,8 @@ export async function POST(request: Request) {
 
     const rawText = await extractResourceText(file);
     const contentText = rawText ? sanitizeExtractedText(rawText) : "";
+    const extractionStatus = getExtractionStatus(contentText, true);
+    const indexingStatus = getIndexingStatus(contentText);
 
     const { data: resource, error: dbError } = await local
       .from("resources")
@@ -71,10 +75,15 @@ export async function POST(request: Request) {
         user_id: user.id,
         title,
         type: getResourceType(file.type),
+        mime_type: file.type,
         file_path: filePath,
         file_size: file.size,
         subject_id: subjectId || null,
         content_text: contentText || null,
+        extraction_status: extractionStatus,
+        indexing_status: indexingStatus,
+        indexed_at: null,
+        last_index_error: null,
         tags: ["chat_attachment"],
       })
       .select("id, title, type, file_path, file_size, created_at")
@@ -89,6 +98,12 @@ export async function POST(request: Request) {
     }
 
     if (contentText.length > 10) {
+      await local
+        .from("resources")
+        .update({ indexing_status: "indexing", last_index_error: null })
+        .eq("id", resource.id)
+        .eq("user_id", user.id);
+
       fetch(new URL("/api/embeddings", request.url).toString(), {
         method: "POST",
         headers: {

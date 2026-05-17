@@ -19,6 +19,7 @@ export function UploadResource({ subjects }: UploadResourceProps) {
   const [subjectId, setSubjectId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   function handleFileSelect(f: File) {
@@ -38,6 +39,7 @@ export function UploadResource({ subjects }: UploadResourceProps) {
     if (!file) return;
     setUploading(true);
     setError(null);
+    setStatus("Uploading and extracting text...");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -54,11 +56,15 @@ export function UploadResource({ subjects }: UploadResourceProps) {
 
       if (!res.ok) {
         setError(data.error || "Upload failed");
+        setStatus(null);
         setUploading(false);
         return;
       }
 
       // Success — reset and close
+      setStatus(
+        `Upload complete. Extraction: ${formatStatus(data.extraction_status ?? "unknown")}. Indexing: ${formatStatus(data.indexing_status ?? "unknown")}.`
+      );
       setFile(null);
       setTitle("");
       setSubjectId("");
@@ -92,6 +98,7 @@ export function UploadResource({ subjects }: UploadResourceProps) {
             setOpen(false);
             setFile(null);
             setError(null);
+            setStatus(null);
           }}
           className="text-ink-subtle hover:text-ink p-1"
         >
@@ -183,6 +190,7 @@ export function UploadResource({ subjects }: UploadResourceProps) {
       </div>
 
       {error && <p className="text-caption text-destructive">{error}</p>}
+      {status && <p className="text-caption text-ink-subtle">{status}</p>}
 
       <Button
         onClick={handleUpload}
@@ -203,4 +211,8 @@ export function UploadResource({ subjects }: UploadResourceProps) {
       </Button>
     </div>
   );
+}
+
+function formatStatus(status: string) {
+  return status.replaceAll("_", " ");
 }

@@ -57,6 +57,10 @@ async function mockResourceUpload(page: Page) {
       status: 201,
       contentType: "application/json",
       body: JSON.stringify({
+        success: true,
+        extraction_status: "extracted",
+        indexing_status: "indexing",
+        content_length: 43,
         resource: {
           id: `resource-${Date.now()}`,
           title: "Synapse E2E Resource",
@@ -111,7 +115,18 @@ async function mockChat(page: Page) {
       { type: "tool_start", name: "list_resources" },
       { type: "tool_result", name: "list_resources" },
       { type: "text", text: "I found your resources and can connect them to your study goals." },
-      { type: "done" },
+      {
+        type: "done",
+        sources: [
+          {
+            index: 1,
+            title: "Synapse E2E Resource",
+            source_type: "resource",
+            source_id: "resource-1",
+            similarity: 0.91,
+          },
+        ],
+      },
     ]
       .map((event) => `data: ${JSON.stringify(event)}\n`)
       .join("");
@@ -120,6 +135,27 @@ async function mockChat(page: Page) {
       status: 200,
       contentType: "text/event-stream",
       body: stream,
+    });
+  });
+}
+
+async function mockWorkspaceSettingsActions(page: Page) {
+  await page.route("**/api/workspace-export", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/zip",
+      headers: {
+        "Content-Disposition": 'attachment; filename="synapse-export-e2e.zip"',
+      },
+      body: Buffer.from("PK e2e zip fixture"),
+    });
+  });
+
+  await page.route("**/api/workspace-reset", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
     });
   });
 }
@@ -225,6 +261,7 @@ test.describe("critical Synapse components", () => {
     await mockSearch(page);
     await mockChat(page);
     await mockFlashcards(page);
+    await mockWorkspaceSettingsActions(page);
 
     await test.step("open the personal workspace", async () => {
       await openPersonalWorkspace(page);
@@ -311,6 +348,7 @@ test.describe("critical Synapse components", () => {
       await page.keyboard.press("Enter");
       await expect(page.getByText("List my resources")).toBeVisible();
       await expect(page.getByText("I found your resources and can connect them to your study goals.")).toBeVisible();
+      await expect(page.getByRole("link", { name: /Synapse E2E Resource/ })).toBeVisible();
     });
 
     await test.step("study mocked flashcards through the summary screen", async () => {
@@ -326,6 +364,19 @@ test.describe("critical Synapse components", () => {
       await page.getByRole("button", { name: "Perfect" }).click();
       await expect(page.getByText("Excellent!")).toBeVisible();
       await expect(page.getByText("You reviewed 2 of 2 cards")).toBeVisible();
+    });
+
+    await test.step("export and confirm reset controls without mutating the fixture", async () => {
+      await page.goto("/settings");
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Export Workspace" }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toContain("synapse-export");
+
+      await page.getByRole("button", { name: "Reset & Re-onboard" }).click();
+      await page.getByLabel("Type RESET to confirm").fill("RESET");
+      await page.getByRole("button", { name: "Reset Everything" }).click();
+      await expect(page).toHaveURL(/\/onboarding\?reset=1/);
     });
   });
 });

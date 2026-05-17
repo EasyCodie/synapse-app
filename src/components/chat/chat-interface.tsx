@@ -462,6 +462,7 @@ export function ChatInterface() {
                 error?: string;
                 id?: string;
                 title?: string;
+                sources?: ChatSource[];
               };
 
               switch (parsed.type) {
@@ -527,7 +528,11 @@ export function ChatInterface() {
                   if (fullText) {
                     setMessages((prev) => [
                       ...prev,
-                      { role: "assistant", content: fullText },
+                      {
+                        role: "assistant",
+                        content: fullText,
+                        sources: parsed.sources?.length ? parsed.sources : undefined,
+                      },
                     ]);
                   }
                   setStreamingText("");
@@ -1371,10 +1376,18 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
         Sources
       </p>
       <div className="flex flex-wrap gap-2">
-        {sources.map((source) => (
-          <div
+        {sources.map((source) => {
+          const href =
+            source.source_type === "resource" ||
+            source.source_type === "attachment_resource"
+              ? `/resources?resource=${encodeURIComponent(source.source_id)}`
+              : `/search?source=${encodeURIComponent(source.source_id)}`;
+
+          return (
+          <a
             key={`${source.source_type}-${source.source_id}-${source.index}`}
-            className="group inline-flex items-center gap-2 px-3 py-1.5 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors duration-200 cursor-default"
+            href={href}
+            className="group inline-flex items-center gap-2 px-3 py-1.5 bg-surface-1 border border-hairline rounded-md hover:border-hairline-strong transition-colors duration-200"
           >
             <span className="flex items-center justify-center w-4 h-4 rounded bg-primary/10 text-[10px] font-medium text-primary">
               {source.index}
@@ -1390,8 +1403,9 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
               <span className="text-[10px] text-ink-tertiary">attached</span>
             )}
             <ExternalLink className="w-3 h-3 text-ink-tertiary opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        ))}
+          </a>
+        );
+        })}
       </div>
     </div>
   );

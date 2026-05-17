@@ -43,9 +43,9 @@ export async function searchResources(
     }
 
     const formatted = results.map(
-      (r: { metadata: { title?: string }; source_type: string; content_text: string; similarity: number }, i: number) => {
+      (r: { metadata: { title?: string }; source_type: string; source_id: string; content_text: string; similarity: number }, i: number) => {
         const title = r.metadata?.title ?? r.source_type;
-        return `[Source ${i + 1}] "${title}" (${(r.similarity * 100).toFixed(0)}% match)\n${r.content_text}`;
+        return `[Source ${i + 1}] "${title}" (${(r.similarity * 100).toFixed(0)}% match, id: ${r.source_id}, type: ${r.source_type})\n${r.content_text}`;
       }
     );
 

@@ -44,6 +44,8 @@ function emptyDb(): Db {
   return Object.fromEntries(TABLES.map((table) => [table, []]));
 }
 
+let dbWriteQueue: Promise<unknown> = Promise.resolve();
+
 function now() {
   return new Date().toISOString();
 }
@@ -67,19 +69,89 @@ async function ensureDb() {
       onboarding_complete: false,
       created_at: now(),
     });
-    await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2));
+    await writeDbFile(db);
   }
+}
+
+async function writeDbFile(db: Db) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+  const tempPath = path.join(
+    DATA_DIR,
+    `db.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`
+  );
+  await fs.writeFile(tempPath, JSON.stringify(db, null, 2));
+  await replaceFile(tempPath, DB_PATH);
+}
+
+async function replaceFile(tempPath: string, targetPath: string) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await fs.rename(tempPath, targetPath);
+      return;
+    } catch (error) {
+      const code = error instanceof Error && "code" in error ? error.code : null;
+      if (code !== "EPERM" && code !== "EEXIST") throw error;
+      await fs.rm(targetPath, { force: true });
+      await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+    }
+  }
+
+  await fs.rename(tempPath, targetPath);
+}
+
+function createInitialDb() {
+  const db = emptyDb();
+  db.profiles.push({
+    id: PERSONAL_USER.id,
+    full_name: PERSONAL_USER.user_metadata.full_name,
+    exam_session: null,
+    onboarding_complete: false,
+    created_at: now(),
+  });
+  return db;
+}
+
+async function backupMalformedDb(raw: string) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = path.join(DATA_DIR, `db.malformed-${stamp}.json`);
+  await fs.writeFile(backupPath, raw);
+  return backupPath;
 }
 
 async function readDb(): Promise<Db> {
   await ensureDb();
   const raw = await fs.readFile(DB_PATH, "utf8");
-  return { ...emptyDb(), ...JSON.parse(raw) };
+  try {
+    return { ...emptyDb(), ...JSON.parse(raw) };
+  } catch {
+    await backupMalformedDb(raw);
+    const recovered = createInitialDb();
+    await writeDbFile(recovered);
+    return recovered;
+  }
 }
 
 async function writeDb(db: Db) {
-  await ensureDb();
-  await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2));
+  return enqueueDbWrite(async () => {
+    await writeDbFile({ ...emptyDb(), ...db });
+  });
+}
+
+async function enqueueDbWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const run = dbWriteQueue.then(operation, operation);
+  dbWriteQueue = run.catch(() => undefined);
+  return run;
+}
+
+function resolveUploadPath(filePath: string) {
+  const normalized = filePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  const target = path.resolve(UPLOAD_DIR, normalized);
+  const uploadRoot = path.resolve(UPLOAD_DIR);
+  if (target !== uploadRoot && !target.startsWith(`${uploadRoot}${path.sep}`)) {
+    throw new Error("Unsafe upload path");
+  }
+  return target;
 }
 
 function matches(row: Row, filters: Filter[]) {
@@ -265,6 +337,18 @@ class LocalQuery {
   }
 
   async execute() {
+    if (this.mode !== "select") {
+      return enqueueDbWrite(async () => this.executeWrite());
+    }
+
+    const db = await readDb();
+    db[this.table] ??= [];
+    const rows = db[this.table].filter((row) => matches(row, this.filters));
+
+    return this.finalizeRows(rows);
+  }
+
+  private async executeWrite() {
     const db = await readDb();
     db[this.table] ??= [];
     let rows = db[this.table];
@@ -290,7 +374,7 @@ class LocalQuery {
           saved.push(prepared);
         }
       }
-      await writeDb(db);
+      await writeDbFile(db);
       rows = saved;
     } else if (this.mode === "update") {
       const changed: Row[] = [];
@@ -301,18 +385,20 @@ class LocalQuery {
         return updated;
       });
       db[this.table] = rows;
-      await writeDb(db);
+      await writeDbFile(db);
       rows = changed;
     } else if (this.mode === "delete") {
       const before = rows.length;
       db[this.table] = rows.filter((row) => !matches(row, this.filters));
-      await writeDb(db);
+      await writeDbFile(db);
       rows = [];
       return { data: null, error: null, count: before - db[this.table].length };
-    } else {
-      rows = rows.filter((row) => matches(row, this.filters));
     }
 
+    return this.finalizeRows(rows);
+  }
+
+  private finalizeRows(rows: Row[]) {
     if (this.orderBy) {
       const { column, ascending } = this.orderBy;
       rows = [...rows].sort((a, b) => {
@@ -372,6 +458,14 @@ export async function writeLocalDb(db: Db) {
   return writeDb(db);
 }
 
+export function getLocalDataPaths() {
+  return {
+    dataDir: DATA_DIR,
+    dbPath: DB_PATH,
+    uploadDir: UPLOAD_DIR,
+  };
+}
+
 export async function createClient() {
   return {
     auth: {
@@ -425,7 +519,7 @@ export async function createClient() {
         return {
           async upload(filePath: string, file: Blob, options?: unknown) {
             void options;
-            const target = path.join(UPLOAD_DIR, filePath);
+            const target = resolveUploadPath(filePath);
             await fs.mkdir(path.dirname(target), { recursive: true });
             const buffer = Buffer.from(await file.arrayBuffer());
             await fs.writeFile(target, buffer);
@@ -433,7 +527,7 @@ export async function createClient() {
           },
           async download(filePath: string) {
             try {
-              const buffer = await fs.readFile(path.join(UPLOAD_DIR, filePath));
+              const buffer = await fs.readFile(resolveUploadPath(filePath));
               return { data: new Blob([buffer]), error: null };
             } catch (error) {
               return {
@@ -444,7 +538,7 @@ export async function createClient() {
           },
           async remove(paths: string[]) {
             for (const filePath of paths) {
-              await fs.rm(path.join(UPLOAD_DIR, filePath), { force: true });
+              await fs.rm(resolveUploadPath(filePath), { force: true });
             }
             return { data: null, error: null };
           },

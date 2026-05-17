@@ -17,6 +17,8 @@ export const CHAT_ATTACHMENT_ALLOWED_MIME_TYPES = [
 export const CHAT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 type ResourceType = "pdf" | "web_clip" | "scan" | "image" | "other";
+export type ExtractionStatus = "extracted" | "failed" | "no_text";
+export type IndexingStatus = "queued" | "indexing" | "indexed" | "failed" | "not_started";
 
 export function getResourceType(mimeType: string): ResourceType {
   return mimeType === "application/pdf" ? "pdf" : "other";
@@ -34,10 +36,20 @@ export function sanitizeExtractedText(text: string) {
   return text.replace(/\u0000/g, "").trim();
 }
 
-export async function extractResourceText(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
+export function getExtractionStatus(contentText: string, attempted: boolean): ExtractionStatus {
+  if (contentText.length > 0) return "extracted";
+  return attempted ? "no_text" : "failed";
+}
 
-  if (file.type === "application/pdf") {
+export function getIndexingStatus(contentText: string): IndexingStatus {
+  return contentText.length > 10 ? "queued" : "not_started";
+}
+
+export async function extractResourceTextFromBuffer(
+  arrayBuffer: ArrayBuffer,
+  mimeType: string
+): Promise<string> {
+  if (mimeType === "application/pdf") {
     try {
       const { extractPdfText } = await import("@/lib/extract-pdf");
       return await extractPdfText(arrayBuffer);
@@ -47,15 +59,27 @@ export async function extractResourceText(file: File): Promise<string> {
     }
   }
 
-  if (file.type === "text/plain" || file.type === "text/markdown") {
+  if (mimeType === "text/plain" || mimeType === "text/markdown") {
     return Buffer.from(arrayBuffer).toString("utf-8");
   }
 
-  try {
-    const { extractDocxText } = await import("@/lib/extract-docx");
-    return await extractDocxText(Buffer.from(arrayBuffer));
-  } catch (err) {
-    console.error("Document extraction failed:", err);
-    return "";
+  if (
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  ) {
+    try {
+      const { extractDocxText } = await import("@/lib/extract-docx");
+      return await extractDocxText(Buffer.from(arrayBuffer));
+    } catch (err) {
+      console.error("Document extraction failed:", err);
+      return "";
+    }
   }
+
+  return "";
+}
+
+export async function extractResourceText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  return extractResourceTextFromBuffer(arrayBuffer, file.type);
 }

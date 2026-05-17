@@ -25,6 +25,8 @@ const RESETTABLE_TABLES = [
   "ee_tracker",
   "tok_tracker",
   "cas_experiences",
+  "integrations",
+  "curriculum_documents",
   "flashcards",
 ] as const;
 

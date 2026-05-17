@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -161,12 +162,19 @@ export function SidebarNav({
         <div className={cn("flex items-center min-h-[44px]", collapsed ? "justify-center px-1" : "justify-between px-3")}>
           <Link href="/dashboard" className="flex items-center gap-2">
             <motion.div
-              className="w-7 h-7 rounded-md bg-primary flex items-center justify-center"
+              className="w-7 h-7 rounded-md bg-primary flex items-center justify-center overflow-hidden"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              <span className="text-on-primary text-caption font-semibold leading-none">S</span>
+              <Image
+                src="/brand/synapse-logo.png"
+                width={20}
+                height={20}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 object-contain"
+              />
             </motion.div>
             {!collapsed && (
               <motion.span

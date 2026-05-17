@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/local/client";
 import {
   extractResourceText,
+  getExtractionStatus,
+  getIndexingStatus,
   getResourceType,
   isAllowedMimeType,
   RESOURCE_BUCKET,
@@ -65,6 +67,13 @@ export async function POST(request: Request) {
     // 2. Extract text content and sanitize for Postgres (remove null bytes)
     const rawText = await extractResourceText(file);
     const contentText = rawText ? sanitizeExtractedText(rawText) : "";
+    const extractionStatus = getExtractionStatus(contentText, true);
+    const indexingStatus = getIndexingStatus(contentText);
+    const warnings: string[] = [];
+
+    if (extractionStatus === "no_text") {
+      warnings.push("No extractable text was found in this file.");
+    }
 
     // 3. Insert resource record
     const { data: resource, error: dbError } = await local
@@ -73,10 +82,15 @@ export async function POST(request: Request) {
         user_id: user.id,
         title,
         type: getResourceType(file.type),
+        mime_type: file.type,
         file_path: filePath,
         file_size: file.size,
         subject_id: subjectId || null,
         content_text: contentText || null,
+        extraction_status: extractionStatus,
+        indexing_status: indexingStatus,
+        indexed_at: null,
+        last_index_error: null,
         tags: [],
       })
       .select("id")
@@ -94,6 +108,12 @@ export async function POST(request: Request) {
     // 4. Generate embeddings if we have text content
     if (contentText && contentText.length > 10 && resource) {
       // Fire and forget — don't block the response
+      await local
+        .from("resources")
+        .update({ indexing_status: "indexing", last_index_error: null })
+        .eq("id", resource.id)
+        .eq("user_id", user.id);
+
       fetch(new URL("/api/embeddings", request.url).toString(), {
         method: "POST",
         headers: {
@@ -114,6 +134,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       resource: { id: resource?.id, title, file_path: filePath },
+      extraction_status: extractionStatus,
+      indexing_status: contentText.length > 10 ? "indexing" : indexingStatus,
+      content_length: contentText.length,
+      warnings,
     });
   } catch (err) {
     console.error("Upload error:", err);

@@ -82,6 +82,14 @@ interface AttachedResource {
   created_at: string;
 }
 
+interface ChatSource {
+  index: number;
+  source_type: string;
+  source_id: string;
+  title: string;
+  similarity?: number;
+}
+
 function buildAttachmentContext(resources: AttachedResource[]) {
   if (resources.length === 0) return null;
 
@@ -99,6 +107,25 @@ function buildAttachmentContext(resources: AttachedResource[]) {
       return `[Attached Resource ${index + 1}]\nID: ${resource.id}\nTitle: ${resource.title}\nType: ${resource.type}\nUploaded: ${resource.created_at}\nContent:\n${truncated}`;
     })
     .join("\n\n---\n\n");
+}
+
+function extractSearchSources(toolResult: string): ChatSource[] {
+  const sources: ChatSource[] = [];
+  const sourceRegex =
+    /\[Source\s+(\d+)\]\s+"([^"]+)"\s+\((\d+)% match,\s+id:\s+([^,\s]+),\s+type:\s+([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = sourceRegex.exec(toolResult)) !== null) {
+    sources.push({
+      index: Number(match[1]),
+      title: match[2] ?? "Resource",
+      similarity: Number(match[3]) / 100,
+      source_id: match[4] ?? "",
+      source_type: match[5] ?? "resource",
+    });
+  }
+
+  return sources;
 }
 
 // System prompt is now built dynamically via buildSystemPrompt() at request time.
@@ -294,6 +321,7 @@ export async function POST(request: Request) {
     // 3. Execute with tool calling using manual loop (for streaming support)
     const encoder = new TextEncoder();
     const toolCallsLog: Array<{ name: string; args: unknown; result_summary: string }> = [];
+    const semanticSources: ChatSource[] = [];
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -465,6 +493,22 @@ export async function POST(request: Request) {
                   result_summary: result.slice(0, 200),
                 });
 
+                if (toolName === "search_resources") {
+                  for (const source of extractSearchSources(result)) {
+                    const existing = semanticSources.some(
+                      (candidate) =>
+                        candidate.source_type === source.source_type &&
+                        candidate.source_id === source.source_id
+                    );
+                    if (!existing) {
+                      semanticSources.push({
+                        ...source,
+                        index: semanticSources.length + 1,
+                      });
+                    }
+                  }
+                }
+
                 // Emit tool_result event
                 controller.enqueue(
                   encoder.encode(
@@ -491,6 +535,7 @@ export async function POST(request: Request) {
               conversation_id: conversationId,
               role: "assistant",
               content: fullContent,
+              sources: semanticSources.length > 0 ? semanticSources : null,
               tool_calls: toolCallsLog.length > 0 ? toolCallsLog : null,
             });
 
@@ -505,7 +550,12 @@ export async function POST(request: Request) {
 
             // Send done event
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "done",
+                  sources: semanticSources,
+                })}\n\n`
+              )
             );
             controller.close();
             return;
