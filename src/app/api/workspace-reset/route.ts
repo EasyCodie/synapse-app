@@ -30,6 +30,7 @@ const RESETTABLE_TABLES = [
   "flashcards",
   "roadmap_items",
   "roadmap_insights",
+  "school_schedule_entries",
 ] as const;
 
 export async function POST() {

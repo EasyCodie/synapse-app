@@ -40,6 +40,7 @@ const TABLES = [
   "flashcards",
   "roadmap_items",
   "roadmap_insights",
+  "school_schedule_entries",
 ];
 
 function emptyDb(): Db {
@@ -254,6 +255,12 @@ function withDefaults(table: string, row: Row) {
     stamped.next_actions ??= [];
     stamped.risk_flags ??= [];
     stamped.generated_at ??= stamped.created_at;
+  }
+  if (table === "school_schedule_entries") {
+    stamped.subject_id ??= null;
+    stamped.room ??= null;
+    stamped.teacher ??= null;
+    stamped.updated_at ??= stamped.created_at;
   }
 
   return stamped;
