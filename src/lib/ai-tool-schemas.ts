@@ -161,6 +161,10 @@ export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             description: "Due date in YYYY-MM-DD format",
           },
+          due_time: {
+            type: "string",
+            description: "Optional due time in HH:mm format",
+          },
           priority: {
             type: "string",
             enum: ["low", "medium", "high", "urgent"],
@@ -169,6 +173,15 @@ export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           subject_id: {
             type: "string",
             description: "Optional subject UUID to associate the task with",
+          },
+          source_title: {
+            type: "string",
+            description:
+              "Optional source label, such as a document, note, or teacher instruction",
+          },
+          source_url: {
+            type: "string",
+            description: "Optional source URL or reference path",
           },
         },
         required: ["title"],
@@ -195,10 +208,28 @@ export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             description: "New due date in YYYY-MM-DD format",
           },
+          due_time: {
+            type: "string",
+            description: "New due time in HH:mm format",
+          },
           priority: {
             type: "string",
             enum: ["low", "medium", "high", "urgent"],
             description: "New priority level",
+          },
+          subject_id: {
+            type: "string",
+            description:
+              "New subject UUID, or omit to keep the current subject",
+          },
+          source_title: {
+            type: "string",
+            description:
+              "New source label, such as a document, note, or teacher instruction",
+          },
+          source_url: {
+            type: "string",
+            description: "New source URL or reference path",
           },
           completed: {
             type: "boolean",
@@ -547,7 +578,8 @@ export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           use_ai: {
             type: "boolean",
-            description: "Use AI insight generation when available. Default true.",
+            description:
+              "Use AI insight generation when available. Default true.",
           },
         },
         additionalProperties: false,

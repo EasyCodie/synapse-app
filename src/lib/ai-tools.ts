@@ -35,7 +35,7 @@ interface SearchResourcesArgs {
 export async function searchResources(
   local: LocalClient,
   userId: string,
-  args: SearchResourcesArgs
+  args: SearchResourcesArgs,
 ): Promise<string> {
   const { query, limit = 6 } = args;
 
@@ -58,10 +58,19 @@ export async function searchResources(
     }
 
     const formatted = results.map(
-      (r: { metadata: { title?: string }; source_type: string; source_id: string; content_text: string; similarity: number }, i: number) => {
+      (
+        r: {
+          metadata: { title?: string };
+          source_type: string;
+          source_id: string;
+          content_text: string;
+          similarity: number;
+        },
+        i: number,
+      ) => {
         const title = r.metadata?.title ?? r.source_type;
         return `[Source ${i + 1}] "${title}" (${(r.similarity * 100).toFixed(0)}% match, id: ${r.source_id}, type: ${r.source_type})\n${r.content_text}`;
-      }
+      },
     );
 
     return formatted.join("\n\n---\n\n");
@@ -80,7 +89,7 @@ interface CreateFlashcardsArgs {
 export async function createFlashcards(
   local: LocalClient,
   userId: string,
-  args: CreateFlashcardsArgs
+  args: CreateFlashcardsArgs,
 ): Promise<string> {
   const { flashcards, subject_id } = args;
 
@@ -116,16 +125,28 @@ interface CreateTaskArgs {
   title: string;
   description?: string;
   due_date?: string;
+  due_time?: string;
   priority?: "low" | "medium" | "high" | "urgent";
   subject_id?: string;
+  source_title?: string;
+  source_url?: string;
 }
 
 export async function createTask(
   local: LocalClient,
   userId: string,
-  args: CreateTaskArgs
+  args: CreateTaskArgs,
 ): Promise<string> {
-  const { title, description, due_date, priority = "medium", subject_id } = args;
+  const {
+    title,
+    description,
+    due_date,
+    due_time,
+    priority = "medium",
+    subject_id,
+    source_title,
+    source_url,
+  } = args;
 
   const { data, error } = await local
     .from("tasks")
@@ -134,11 +155,14 @@ export async function createTask(
       title,
       description: description || null,
       due_date: due_date || null,
+      due_time: due_time || null,
       priority,
       subject_id: subject_id || null,
+      source_title: source_title || null,
+      source_url: source_url || null,
       completed: false,
     })
-    .select("id, title, due_date, priority")
+    .select("id, title, due_date, due_time, priority, source_title")
     .single();
 
   if (error) {
@@ -148,6 +172,12 @@ export async function createTask(
   let result = `Task created: "${data.title}" (${data.priority} priority)`;
   if (data.due_date) {
     result += ` — due ${data.due_date}`;
+  }
+  if (data.due_time) {
+    result += ` at ${data.due_time}`;
+  }
+  if (data.source_title) {
+    result += ` - source: ${data.source_title}`;
   }
   return result;
 }
@@ -161,7 +191,7 @@ interface GetUpcomingDeadlinesArgs {
 export async function getUpcomingDeadlines(
   local: LocalClient,
   userId: string,
-  args: GetUpcomingDeadlinesArgs
+  args: GetUpcomingDeadlinesArgs,
 ): Promise<string> {
   const { days_ahead = 7 } = args;
 
@@ -224,7 +254,7 @@ interface SummarizeResourceArgs {
 export async function summarizeResource(
   local: LocalClient,
   userId: string,
-  args: SummarizeResourceArgs
+  args: SummarizeResourceArgs,
 ): Promise<string> {
   const { resource_id, title_search } = args;
 
@@ -260,9 +290,10 @@ export async function summarizeResource(
 
   // Truncate to ~3000 words to stay within tool output limits
   const words = resource.content_text.split(/\s+/);
-  const truncated = words.length > 3000
-    ? words.slice(0, 3000).join(" ") + "\n\n[...content truncated for length]"
-    : resource.content_text;
+  const truncated =
+    words.length > 3000
+      ? words.slice(0, 3000).join(" ") + "\n\n[...content truncated for length]"
+      : resource.content_text;
 
   return `Resource: "${resource.title}" (${resource.type})\nUploaded: ${resource.created_at}\n\nContent:\n${truncated}`;
 }
@@ -277,7 +308,7 @@ interface ListResourcesArgs {
 export async function listResources(
   local: LocalClient,
   userId: string,
-  args: ListResourcesArgs
+  args: ListResourcesArgs,
 ): Promise<string> {
   const { limit = 20, subject_id } = args;
 
@@ -302,12 +333,14 @@ export async function listResources(
     return "No resources uploaded yet. The student should upload PDFs, documents, or text files via the Resource Library.";
   }
 
-  const formatted = (resources as Array<{
-    title: string;
-    type: string;
-    created_at?: string;
-    content_text?: string | null;
-  }>).map((r, i) => {
+  const formatted = (
+    resources as Array<{
+      title: string;
+      type: string;
+      created_at?: string;
+      content_text?: string | null;
+    }>
+  ).map((r, i) => {
     const hasContent = r.content_text && r.content_text.length > 0;
     const status = hasContent ? "✓ indexed" : "⚠ not indexed";
     return `${i + 1}. "${r.title}" (${r.type}) — uploaded ${r.created_at?.split("T")[0]} [${status}]`;
@@ -326,7 +359,7 @@ interface DeleteTaskArgs {
 export async function deleteTask(
   local: LocalClient,
   userId: string,
-  args: DeleteTaskArgs
+  args: DeleteTaskArgs,
 ): Promise<string> {
   const { task_id, title_search } = args;
 
@@ -379,14 +412,18 @@ interface UpdateTaskArgs {
   title?: string;
   description?: string;
   due_date?: string;
+  due_time?: string;
   priority?: "low" | "medium" | "high" | "urgent";
+  subject_id?: string;
+  source_title?: string;
+  source_url?: string;
   completed?: boolean;
 }
 
 export async function updateTask(
   local: LocalClient,
   userId: string,
-  args: UpdateTaskArgs
+  args: UpdateTaskArgs,
 ): Promise<string> {
   const { task_id, ...updates } = args;
 
@@ -397,13 +434,22 @@ export async function updateTask(
   // Build update object with only provided fields
   const updateFields: Record<string, unknown> = {};
   if (updates.title !== undefined) updateFields.title = updates.title;
-  if (updates.description !== undefined) updateFields.description = updates.description;
+  if (updates.description !== undefined)
+    updateFields.description = updates.description;
   if (updates.due_date !== undefined) updateFields.due_date = updates.due_date;
+  if (updates.due_time !== undefined) updateFields.due_time = updates.due_time;
   if (updates.priority !== undefined) updateFields.priority = updates.priority;
-  if (updates.completed !== undefined) updateFields.completed = updates.completed;
+  if (updates.subject_id !== undefined)
+    updateFields.subject_id = updates.subject_id;
+  if (updates.source_title !== undefined)
+    updateFields.source_title = updates.source_title;
+  if (updates.source_url !== undefined)
+    updateFields.source_url = updates.source_url;
+  if (updates.completed !== undefined)
+    updateFields.completed = updates.completed;
 
   if (Object.keys(updateFields).length === 0) {
-    return "No fields to update. Provide at least one field (title, description, due_date, priority, or completed).";
+    return "No fields to update. Provide at least one editable task field.";
   }
 
   const { data, error } = await local
@@ -411,7 +457,7 @@ export async function updateTask(
     .update(updateFields)
     .eq("id", task_id)
     .eq("user_id", userId)
-    .select("id, title, due_date, priority, completed")
+    .select("id, title, due_date, due_time, priority, completed, source_title")
     .single();
 
   if (error) {
@@ -423,6 +469,9 @@ export async function updateTask(
   else if (updates.completed === false) parts.push("— reopened");
   if (updates.due_date) parts.push(`— due date set to ${data.due_date}`);
   if (updates.priority) parts.push(`— priority set to ${data.priority}`);
+
+  if (updates.due_time) parts.push(`- due time set to ${data.due_time}`);
+  if (updates.source_title) parts.push(`- source set to ${data.source_title}`);
 
   return parts.join(" ");
 }
@@ -438,13 +487,15 @@ interface ListTasksArgs {
 export async function listTasks(
   local: LocalClient,
   userId: string,
-  args: ListTasksArgs
+  args: ListTasksArgs,
 ): Promise<string> {
   const { completed, subject_id, limit = 20 } = args;
 
   let query = local
     .from("tasks")
-    .select("id, title, due_date, priority, completed, subject_id, created_at")
+    .select(
+      "id, title, description, due_date, due_time, priority, completed, subject_id, source_title, source_url, created_at",
+    )
     .eq("user_id", userId)
     .order("due_date", { ascending: true })
     .limit(limit);
@@ -464,20 +515,32 @@ export async function listTasks(
   }
 
   if (!tasks || tasks.length === 0) {
-    const filter = completed === true ? "completed " : completed === false ? "open " : "";
+    const filter =
+      completed === true ? "completed " : completed === false ? "open " : "";
     return `No ${filter}tasks found.`;
   }
 
-  const formatted = (tasks as Array<{
-    id: string;
-    title: string;
-    due_date: string | null;
-    priority: string;
-    completed: boolean;
-  }>).map((t, i) => {
+  const formatted = (
+    tasks as Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      due_date: string | null;
+      due_time?: string | null;
+      priority: string;
+      completed: boolean;
+      source_title?: string | null;
+      source_url?: string | null;
+    }>
+  ).map((t, i) => {
     const status = t.completed ? "✓" : "○";
     const due = t.due_date ? ` — due ${t.due_date}` : "";
-    return `${i + 1}. ${status} "${t.title}" [${t.priority}]${due} (id: ${t.id})`;
+    const dueTime = t.due_time ? ` at ${t.due_time}` : "";
+    const description = t.description ? ` - ${t.description}` : "";
+    const source = t.source_title
+      ? ` - source: ${t.source_title}${t.source_url ? ` (${t.source_url})` : ""}`
+      : "";
+    return `${i + 1}. ${status} "${t.title}" [${t.priority}]${due}${dueTime}${description}${source} (id: ${t.id})`;
   });
 
   return `Found ${tasks.length} task${tasks.length !== 1 ? "s" : ""}:\n\n${formatted.join("\n")}`;
@@ -493,7 +556,7 @@ interface DeleteFlashcardsArgs {
 export async function deleteFlashcards(
   local: LocalClient,
   userId: string,
-  args: DeleteFlashcardsArgs
+  args: DeleteFlashcardsArgs,
 ): Promise<string> {
   const { flashcard_ids, subject_id } = args;
 
@@ -501,10 +564,7 @@ export async function deleteFlashcards(
     return "Please provide either flashcard_ids or subject_id to identify which flashcards to delete.";
   }
 
-  let deleteQuery = local
-    .from("flashcards")
-    .delete()
-    .eq("user_id", userId);
+  let deleteQuery = local.from("flashcards").delete().eq("user_id", userId);
 
   if (flashcard_ids && flashcard_ids.length > 0) {
     deleteQuery = deleteQuery.in("id", flashcard_ids);
@@ -530,7 +590,7 @@ export async function deleteFlashcards(
 
 export async function getMySubjects(
   local: LocalClient,
-  userId: string
+  userId: string,
 ): Promise<string> {
   const { data: subjects, error } = await local
     .from("user_subjects")
@@ -546,15 +606,17 @@ export async function getMySubjects(
     return "No subjects configured yet. The student should complete onboarding first.";
   }
 
-  const formatted = (subjects as Array<{
-    id: string;
-    subject_name: string;
-    level: string;
-    subject_group: number;
-    language: string;
-  }>).map(
+  const formatted = (
+    subjects as Array<{
+      id: string;
+      subject_name: string;
+      level: string;
+      subject_group: number;
+      language: string;
+    }>
+  ).map(
     (s) =>
-      `- ${s.subject_name} (${s.level}) — Group ${s.subject_group}, ${s.language} (id: ${s.id})`
+      `- ${s.subject_name} (${s.level}) — Group ${s.subject_group}, ${s.language} (id: ${s.id})`,
   );
 
   return `Student's IB subjects:\n\n${formatted.join("\n")}`;
@@ -569,20 +631,24 @@ interface GetIAStatusArgs {
 export async function getIAStatus(
   local: LocalClient,
   userId: string,
-  args: GetIAStatusArgs
+  args: GetIAStatusArgs,
 ): Promise<string> {
   const { subject_id } = args;
 
   let query = local
     .from("internal_assessments")
-    .select("id, title, subject_id, status, stage, word_count, deadline, created_at")
+    .select(
+      "id, title, subject_id, status, stage, word_count, deadline, created_at",
+    )
     .eq("user_id", userId);
 
   if (subject_id) {
     query = query.eq("subject_id", subject_id);
   }
 
-  const { data: ias, error } = await query.order("deadline", { ascending: true });
+  const { data: ias, error } = await query.order("deadline", {
+    ascending: true,
+  });
 
   if (error) {
     return `Failed to load IA status: ${error.message}`;
@@ -592,13 +658,15 @@ export async function getIAStatus(
     return "No Internal Assessments tracked yet. The student can add IAs from the IA Manager page.";
   }
 
-  const formatted = (ias as Array<{
-    title: string;
-    status: string | null;
-    stage: string | null;
-    word_count: number | null;
-    deadline: string | null;
-  }>).map((ia) => {
+  const formatted = (
+    ias as Array<{
+      title: string;
+      status: string | null;
+      stage: string | null;
+      word_count: number | null;
+      deadline: string | null;
+    }>
+  ).map((ia) => {
     const parts = [`- "${ia.title}"`];
     if (ia.status) parts.push(`[${ia.status}]`);
     if (ia.stage) parts.push(`Stage: ${ia.stage}`);
@@ -619,7 +687,7 @@ interface GetSyllabusProgressArgs {
 export async function getSyllabusProgress(
   local: LocalClient,
   userId: string,
-  args: GetSyllabusProgressArgs
+  args: GetSyllabusProgressArgs,
 ): Promise<string> {
   const { subject_id } = args;
 
@@ -643,15 +711,20 @@ export async function getSyllabusProgress(
   }
 
   const total = progress.length;
-  const done = (progress as Array<{ completed: boolean }>).filter((p) => p.completed).length;
+  const done = (progress as Array<{ completed: boolean }>).filter(
+    (p) => p.completed,
+  ).length;
   const pct = Math.round((done / total) * 100);
 
-  const formatted = (progress as Array<{
-    topic: string;
-    unit: string | null;
-    completed: boolean;
-  }>).map(
-    (p) => `- ${p.completed ? "✓" : "○"} ${p.unit ? `[${p.unit}] ` : ""}${p.topic}`
+  const formatted = (
+    progress as Array<{
+      topic: string;
+      unit: string | null;
+      completed: boolean;
+    }>
+  ).map(
+    (p) =>
+      `- ${p.completed ? "✓" : "○"} ${p.unit ? `[${p.unit}] ` : ""}${p.topic}`,
   );
 
   return `Syllabus progress: ${done}/${total} topics complete (${pct}%)\n\n${formatted.join("\n")}`;
@@ -668,7 +741,7 @@ interface ListNotesArgs {
 export async function listNotes(
   local: LocalClient,
   userId: string,
-  args: ListNotesArgs
+  args: ListNotesArgs,
 ): Promise<string> {
   const { subject_id, search, limit = 20 } = args;
 
@@ -697,12 +770,14 @@ export async function listNotes(
     return "No notes found. The student can create notes from the Subjects page.";
   }
 
-  const formatted = (notes as Array<{
-    id: string;
-    title: string;
-    updated_at: string | null;
-    created_at: string;
-  }>).map((n, i) => {
+  const formatted = (
+    notes as Array<{
+      id: string;
+      title: string;
+      updated_at: string | null;
+      created_at: string;
+    }>
+  ).map((n, i) => {
     const date = (n.updated_at || n.created_at)?.split("T")[0];
     return `${i + 1}. "${n.title}" — updated ${date} (id: ${n.id})`;
   });
@@ -715,7 +790,7 @@ export async function listNotes(
 export async function getRoadmapOverview(
   local: LocalClient,
   userId: string,
-  args: Pick<RoadmapFindArgs, "include_hidden" | "limit" | "from" | "to">
+  args: Pick<RoadmapFindArgs, "include_hidden" | "limit" | "from" | "to">,
 ): Promise<string> {
   try {
     const overview = await getRoadmapOverviewAction(userId, args, local);
@@ -729,15 +804,17 @@ export async function getRoadmapOverview(
     }
     if (overview.next_focus.length > 0) {
       lines.push(
-        `Next focus:\n${overview.next_focus.map(formatRoadmapItemLine).join("\n")}`
+        `Next focus:\n${overview.next_focus.map(formatRoadmapItemLine).join("\n")}`,
       );
     }
     if (overview.risks.length > 0) {
-      lines.push(`Risks:\n${overview.risks.map((risk) => `- ${risk}`).join("\n")}`);
+      lines.push(
+        `Risks:\n${overview.risks.map((risk) => `- ${risk}`).join("\n")}`,
+      );
     }
     if (overview.timeline.length > 0) {
       lines.push(
-        `Timeline slice:\n${overview.timeline.map(formatRoadmapItemLine).join("\n")}`
+        `Timeline slice:\n${overview.timeline.map(formatRoadmapItemLine).join("\n")}`,
       );
     }
 
@@ -750,7 +827,7 @@ export async function getRoadmapOverview(
 export async function findRoadmapItems(
   local: LocalClient,
   userId: string,
-  args: RoadmapFindArgs
+  args: RoadmapFindArgs,
 ): Promise<string> {
   try {
     const items = await findRoadmapItemsAction(userId, args, local);
@@ -769,7 +846,7 @@ export async function findRoadmapItems(
 export async function createRoadmapItem(
   local: LocalClient,
   userId: string,
-  args: RoadmapCreateArgs
+  args: RoadmapCreateArgs,
 ): Promise<string> {
   try {
     const item = await createRoadmapItemAction(userId, args, local);
@@ -782,7 +859,7 @@ export async function createRoadmapItem(
 export async function updateRoadmapItem(
   local: LocalClient,
   userId: string,
-  args: RoadmapUpdateArgs
+  args: RoadmapUpdateArgs,
 ): Promise<string> {
   try {
     const item = await updateRoadmapItemAction(userId, args, local);
@@ -795,7 +872,7 @@ export async function updateRoadmapItem(
 export async function splitRoadmapItem(
   local: LocalClient,
   userId: string,
-  args: RoadmapSplitArgs
+  args: RoadmapSplitArgs,
 ): Promise<string> {
   try {
     const children = await splitRoadmapItemAction(userId, args, local);
@@ -810,7 +887,7 @@ export async function splitRoadmapItem(
 export async function linkRoadmapItem(
   local: LocalClient,
   userId: string,
-  args: { id?: string; kind?: "task" | "milestone" }
+  args: { id?: string; kind?: "task" | "milestone" },
 ): Promise<string> {
   try {
     const result = await linkRoadmapItemAction(userId, args, local);
@@ -824,13 +901,13 @@ export async function linkRoadmapItem(
 export async function regenerateRoadmap(
   local: LocalClient,
   userId: string,
-  args: { use_ai?: boolean; ai?: boolean }
+  args: { use_ai?: boolean; ai?: boolean },
 ): Promise<string> {
   try {
     const data = await regenerateRoadmapAction(
       userId,
       { use_ai: args.use_ai ?? args.ai },
-      local
+      local,
     );
     const nextItems = data.items
       .filter((item) => item.status !== "done")
@@ -840,7 +917,9 @@ export async function regenerateRoadmap(
     ];
     if (data.insight?.summary) lines.push(`Insight: ${data.insight.summary}`);
     if (nextItems.length > 0) {
-      lines.push(`Next items:\n${nextItems.map(formatRoadmapItemLine).join("\n")}`);
+      lines.push(
+        `Next items:\n${nextItems.map(formatRoadmapItemLine).join("\n")}`,
+      );
     }
     return lines.join("\n\n");
   } catch (cause) {

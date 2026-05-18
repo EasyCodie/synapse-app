@@ -17,7 +17,7 @@ type LocalClient = Awaited<ReturnType<typeof createClient>>;
  */
 export async function buildSystemPrompt(
   userId: string,
-  local: LocalClient
+  local: LocalClient,
 ): Promise<string> {
   // ── Load student context ──────────────────────────────────────────────────
   const { data: profile } = await local
@@ -44,7 +44,8 @@ export async function buildSystemPrompt(
               subject_name: string;
               level: string;
               subject_group: number;
-            }) => `  • ${s.subject_name} (${s.level}) — Group ${s.subject_group}`
+            }) =>
+              `  • ${s.subject_name} (${s.level}) — Group ${s.subject_group}`,
           )
           .join("\n")
       : "  • No subjects configured yet.";
@@ -100,12 +101,12 @@ USE WHEN: The student asks to delete specific flashcards or clear flashcards for
 ALWAYS: Confirm what will be deleted before executing.
 
 ## create_task
-Add a task to the student's task list with optional due date and priority.
+Add a task to the student's task list with optional due date, due time, priority, description, subject, and source reference.
 USE WHEN: The student asks to be reminded of something, wants to track a deadline, or says "add a task".
 PROCEED WITHOUT CONFIRMATION: Infer reasonable due dates and priorities from context.
 
 ## update_task
-Modify an existing task's title, description, due date, priority, or completion status.
+Modify an existing task's title, description, due date/time, priority, subject, source reference, or completion status.
 USE WHEN: The student says "mark X as done", "change the priority of X", "move the deadline", "rename the task".
 WORKFLOW: First call list_tasks to find the task ID, then call update_task with the changes.
 

@@ -81,7 +81,7 @@ async function writeDbFile(db: Db) {
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
   const tempPath = path.join(
     DATA_DIR,
-    `db.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`
+    `db.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`,
   );
   await fs.writeFile(tempPath, JSON.stringify(db, null, 2));
   await replaceFile(tempPath, DB_PATH);
@@ -93,7 +93,8 @@ async function replaceFile(tempPath: string, targetPath: string) {
       await fs.rename(tempPath, targetPath);
       return;
     } catch (error) {
-      const code = error instanceof Error && "code" in error ? error.code : null;
+      const code =
+        error instanceof Error && "code" in error ? error.code : null;
       if (code !== "EPERM" && code !== "EEXIST") throw error;
       await fs.rm(targetPath, { force: true });
       await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
@@ -171,7 +172,9 @@ function matches(row: Row, filters: Filter[]) {
         return Array.isArray(filter.value) && filter.value.includes(value);
       case "ilike": {
         const needle = String(filter.value).replaceAll("%", "").toLowerCase();
-        return String(value ?? "").toLowerCase().includes(needle);
+        return String(value ?? "")
+          .toLowerCase()
+          .includes(needle);
       }
     }
   });
@@ -184,19 +187,30 @@ function project(rows: Row[], columns: string | null) {
     .map((column) => column.trim())
     .filter(Boolean);
   return rows.map((row) =>
-    Object.fromEntries(keys.map((key) => [key, row[key]]))
+    Object.fromEntries(keys.map((key) => [key, row[key]])),
   );
 }
 
 function withDefaults(table: string, row: Row) {
-  const stamped: Row = { id: row.id ?? createId(), created_at: row.created_at ?? now(), ...row };
+  const stamped: Row = {
+    id: row.id ?? createId(),
+    created_at: row.created_at ?? now(),
+    ...row,
+  };
 
   if (table === "profiles") {
     stamped.onboarding_complete ??= false;
   }
   if (table === "tasks") {
+    stamped.description ??= null;
+    stamped.due_date ??= null;
+    stamped.due_time ??= null;
     stamped.priority ??= "medium";
     stamped.completed ??= false;
+    stamped.subject_id ??= null;
+    stamped.source_title ??= null;
+    stamped.source_url ??= null;
+    stamped.updated_at ??= stamped.created_at;
   }
   if (table === "milestones") {
     stamped.type ??= "custom";
@@ -377,7 +391,9 @@ class LocalQuery {
     let rows = db[this.table];
 
     if (this.mode === "insert") {
-      const incoming = Array.isArray(this.payload) ? this.payload : [this.payload ?? {}];
+      const incoming = Array.isArray(this.payload)
+        ? this.payload
+        : [this.payload ?? {}];
       const conflictKeys = String((this as any).onConflict ?? "id")
         .split(",")
         .map((key) => key.trim())
@@ -387,7 +403,7 @@ class LocalQuery {
       for (const row of incoming) {
         const prepared = withDefaults(this.table, row);
         const existingIndex = rows.findIndex((candidate) =>
-          conflictKeys.every((key) => candidate[key] === prepared[key])
+          conflictKeys.every((key) => candidate[key] === prepared[key]),
         );
         if (existingIndex >= 0) {
           rows[existingIndex] = { ...rows[existingIndex], ...prepared };
@@ -403,7 +419,11 @@ class LocalQuery {
       const changed: Row[] = [];
       rows = rows.map((row) => {
         if (!matches(row, this.filters)) return row;
-        const updated = { ...row, ...(this.payload as Row), updated_at: (this.payload as Row)?.updated_at ?? row.updated_at };
+        const updated = {
+          ...row,
+          ...(this.payload as Row),
+          updated_at: (this.payload as Row)?.updated_at ?? row.updated_at,
+        };
         changed.push(updated);
         return updated;
       });
@@ -452,8 +472,10 @@ class LocalQuery {
   }
 
   then<TResult1 = LocalResult, TResult2 = never>(
-    onfulfilled?: ((value: LocalResult) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+    onfulfilled?:
+      | ((value: LocalResult) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     return this.execute().then(onfulfilled, onrejected);
   }
@@ -555,7 +577,10 @@ export async function createClient() {
             } catch (error) {
               return {
                 data: null,
-                error: { message: error instanceof Error ? error.message : "Download failed" },
+                error: {
+                  message:
+                    error instanceof Error ? error.message : "Download failed",
+                },
               };
             }
           },

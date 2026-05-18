@@ -38,7 +38,9 @@ async function readConnectionState(): Promise<ConnectionState | null> {
   }
 }
 
-async function writeConnectionState(state: ConnectionState | null): Promise<void> {
+async function writeConnectionState(
+  state: ConnectionState | null,
+): Promise<void> {
   try {
     await fs.mkdir(STATE_DIR, { recursive: true });
     if (state === null) {
@@ -62,7 +64,7 @@ type GoogleConfig = {
 export class GoogleDriveError extends Error {
   constructor(
     public code: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "GoogleDriveError";
@@ -120,6 +122,33 @@ type GoogleDocumentMetadata = {
   title?: string;
 };
 
+type GoogleDocumentSnapshot = {
+  title?: string;
+  body?: {
+    content?: GoogleStructuralElement[];
+  };
+};
+
+type GoogleStructuralElement = {
+  paragraph?: {
+    elements?: Array<{
+      textRun?: {
+        content?: string;
+      };
+    }>;
+  };
+  table?: {
+    tableRows?: Array<{
+      tableCells?: Array<{
+        content?: GoogleStructuralElement[];
+      }>;
+    }>;
+  };
+  tableOfContents?: {
+    content?: GoogleStructuralElement[];
+  };
+};
+
 function getBaseUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
@@ -151,8 +180,15 @@ function encryptionKey(secret: string) {
 
 function encryptToken(token: string, secret: string) {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
-  const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  const cipher = crypto.createCipheriv(
+    "aes-256-gcm",
+    encryptionKey(secret),
+    iv,
+  );
+  const encrypted = Buffer.concat([
+    cipher.update(token, "utf8"),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
   return [iv, tag, encrypted]
     .map((part) => part.toString("base64url"))
@@ -164,13 +200,22 @@ function decryptToken(payload: string, secret: string) {
     .split(".")
     .map((part) => Buffer.from(part, "base64url"));
   if (!iv || !tag || !encrypted) throw new Error("Invalid stored Google token");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", encryptionKey(secret), iv);
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    encryptionKey(secret),
+    iv,
+  );
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 function signState(unsigned: string, secret: string) {
-  return crypto.createHmac("sha256", secret).update(unsigned).digest("base64url");
+  return crypto
+    .createHmac("sha256", secret)
+    .update(unsigned)
+    .digest("base64url");
 }
 
 function encodeState(userId: string, returnTo: string, secret: string) {
@@ -189,7 +234,9 @@ export function decodeGoogleState(state: string, secret: string) {
   if (!unsigned || !signature || signState(unsigned, secret) !== signature) {
     throw new Error("Invalid Google authorization state");
   }
-  const decoded = JSON.parse(Buffer.from(unsigned, "base64url").toString("utf8")) as {
+  const decoded = JSON.parse(
+    Buffer.from(unsigned, "base64url").toString("utf8"),
+  ) as {
     userId: string;
     returnTo?: string;
     issuedAt: number;
@@ -199,7 +246,9 @@ export function decodeGoogleState(state: string, secret: string) {
   }
   return {
     userId: decoded.userId,
-    returnTo: decoded.returnTo?.startsWith("/") ? decoded.returnTo : "/settings",
+    returnTo: decoded.returnTo?.startsWith("/")
+      ? decoded.returnTo
+      : "/settings",
   };
 }
 
@@ -229,7 +278,7 @@ async function requestToken(body: Record<string, string>) {
   if (!response.ok || data.error) {
     throw new GoogleDriveError(
       data.error ?? "token_request_failed",
-      data.error_description ?? data.error ?? "Google token request failed"
+      data.error_description ?? data.error ?? "Google token request failed",
     );
   }
   return data;
@@ -247,20 +296,26 @@ export async function exchangeGoogleCode(code: string) {
   });
 }
 
-export async function saveGoogleIntegration(userId: string, tokens: TokenResponse) {
+export async function saveGoogleIntegration(
+  userId: string,
+  tokens: TokenResponse,
+) {
   const config = getGoogleConfig();
   if (!config) throw new Error("Google Drive is not configured");
   const existing = await getGoogleIntegration(userId);
   let refreshToken = tokens.refresh_token;
 
   if (!refreshToken && existing) {
-    refreshToken = decryptToken(existing.encrypted_refresh_token, config.tokenKey);
+    refreshToken = decryptToken(
+      existing.encrypted_refresh_token,
+      config.tokenKey,
+    );
   }
 
   if (!refreshToken) {
     throw new GoogleDriveError(
       "missing_refresh_token",
-      "Google did not return a refresh token. Revoke Synapse access in your Google Account, then connect again."
+      "Google did not return a refresh token. Revoke Synapse access in your Google Account, then connect again.",
     );
   }
 
@@ -275,7 +330,7 @@ export async function saveGoogleIntegration(userId: string, tokens: TokenRespons
       metadata: {},
       updated_at: nowStr,
     },
-    { onConflict: "user_id,provider" }
+    { onConflict: "user_id,provider" },
   );
 
   // Persist lightweight connection state (survives dev-server restarts)
@@ -288,7 +343,9 @@ export async function saveGoogleIntegration(userId: string, tokens: TokenRespons
   // Verify the write succeeded by reading back
   const verification = await getGoogleIntegration(userId);
   if (!verification) {
-    console.error("[google-drive] WARNING: Integration write did not persist to db.json");
+    console.error(
+      "[google-drive] WARNING: Integration write did not persist to db.json",
+    );
   }
 }
 
@@ -324,7 +381,9 @@ export async function getGoogleDriveStatus(userId: string) {
         } catch {
           // Token exists but can't be decrypted — key likely changed
           needsRefresh = true;
-          console.warn("[google-drive] Stored token cannot be decrypted. Encryption key may have changed.");
+          console.warn(
+            "[google-drive] Stored token cannot be decrypted. Encryption key may have changed.",
+          );
         }
       }
     }
@@ -361,19 +420,28 @@ async function getGoogleAccessToken(userId: string) {
   const config = getGoogleConfig();
   if (!config) throw new Error("Google Drive is not configured");
   const integration = await getGoogleIntegration(userId);
-  if (!integration) throw new Error("Connect Google Drive before creating documents");
-  const refreshToken = decryptToken(integration.encrypted_refresh_token, config.tokenKey);
+  if (!integration)
+    throw new Error("Connect Google Drive before using Google documents");
+  const refreshToken = decryptToken(
+    integration.encrypted_refresh_token,
+    config.tokenKey,
+  );
   const token = await requestToken({
     refresh_token: refreshToken,
     client_id: config.clientId,
     client_secret: config.clientSecret,
     grant_type: "refresh_token",
   });
-  if (!token.access_token) throw new Error("Google did not return an access token");
+  if (!token.access_token)
+    throw new Error("Google did not return an access token");
   return { accessToken: token.access_token, integration };
 }
 
-async function googleFetch<T>(accessToken: string, url: string, init: RequestInit = {}) {
+async function googleFetch<T>(
+  accessToken: string,
+  url: string,
+  init: RequestInit = {},
+) {
   const response = await fetch(url, {
     ...init,
     headers: {
@@ -383,9 +451,9 @@ async function googleFetch<T>(accessToken: string, url: string, init: RequestIni
     },
   });
   const text = await response.text();
-  const data = (
-    text ? JSON.parse(text) : {}
-  ) as T & { error?: { message?: string } };
+  const data = (text ? JSON.parse(text) : {}) as T & {
+    error?: { message?: string };
+  };
   if (!response.ok) {
     throw new Error(data.error?.message ?? "Google Drive request failed");
   }
@@ -396,7 +464,11 @@ function escapeDriveQuery(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
-async function findFolder(accessToken: string, name: string, parentId?: string) {
+async function findFolder(
+  accessToken: string,
+  name: string,
+  parentId?: string,
+) {
   const clauses = [
     `name = '${escapeDriveQuery(name)}'`,
     "mimeType = 'application/vnd.google-apps.folder'",
@@ -407,11 +479,18 @@ async function findFolder(accessToken: string, name: string, parentId?: string) 
   url.searchParams.set("q", clauses.join(" and "));
   url.searchParams.set("spaces", "drive");
   url.searchParams.set("fields", "files(id,name,webViewLink)");
-  const data = await googleFetch<{ files?: DriveFile[] }>(accessToken, url.toString());
+  const data = await googleFetch<{ files?: DriveFile[] }>(
+    accessToken,
+    url.toString(),
+  );
   return data.files?.[0] ?? null;
 }
 
-async function createFolder(accessToken: string, name: string, parentId?: string) {
+async function createFolder(
+  accessToken: string,
+  name: string,
+  parentId?: string,
+) {
   return googleFetch<DriveFile>(
     accessToken,
     `${DRIVE_API}/files?fields=id,name,webViewLink`,
@@ -422,18 +501,25 @@ async function createFolder(accessToken: string, name: string, parentId?: string
         mimeType: "application/vnd.google-apps.folder",
         parents: parentId ? [parentId] : undefined,
       }),
-    }
+    },
   );
 }
 
-async function ensureFolder(accessToken: string, name: string, parentId?: string) {
-  return (await findFolder(accessToken, name, parentId)) ?? createFolder(accessToken, name, parentId);
+async function ensureFolder(
+  accessToken: string,
+  name: string,
+  parentId?: string,
+) {
+  return (
+    (await findFolder(accessToken, name, parentId)) ??
+    createFolder(accessToken, name, parentId)
+  );
 }
 
 async function updateIntegrationMetadata(
   userId: string,
   integration: GoogleIntegrationRow,
-  metadata: GoogleIntegrationRow["metadata"]
+  metadata: GoogleIntegrationRow["metadata"],
 ) {
   const local = await createClient();
   await local
@@ -462,7 +548,10 @@ async function ensureCurriculumFolderPath(userId: string, segments: string[]) {
       .select("exam_session")
       .eq("id", userId)
       .maybeSingle();
-    const session = typeof profile?.exam_session === "string" ? profile.exam_session : "Workspace";
+    const session =
+      typeof profile?.exam_session === "string"
+        ? profile.exam_session
+        : "Workspace";
     root = await ensureFolder(accessToken, `Synapse IB Workspace - ${session}`);
     await updateIntegrationMetadata(userId, integration, {
       root_folder_id: root.id,
@@ -497,7 +586,10 @@ export async function createCurriculumGoogleDoc({
   folderSegments: string[];
   seedText: string;
 }) {
-  const { accessToken, folderId } = await ensureCurriculumFolderPath(userId, folderSegments);
+  const { accessToken, folderId } = await ensureCurriculumFolderPath(
+    userId,
+    folderSegments,
+  );
   const driveFile = await googleFetch<DriveFile>(
     accessToken,
     `${DRIVE_API}/files?fields=id,name,webViewLink`,
@@ -508,60 +600,146 @@ export async function createCurriculumGoogleDoc({
         mimeType: "application/vnd.google-apps.document",
         parents: [folderId],
       }),
-    }
+    },
   );
 
   if (seedText.trim()) {
-    await googleFetch(accessToken, `${DOCS_API}/documents/${driveFile.id}:batchUpdate`, {
-      method: "POST",
-      body: JSON.stringify({
-        requests: [
-          {
-            insertText: {
-              location: { index: 1 },
-              text: seedText.trimEnd() + "\n",
+    await googleFetch(
+      accessToken,
+      `${DOCS_API}/documents/${driveFile.id}:batchUpdate`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          requests: [
+            {
+              insertText: {
+                location: { index: 1 },
+                text: seedText.trimEnd() + "\n",
+              },
             },
-          },
-        ],
-      }),
-    });
+          ],
+        }),
+      },
+    );
   }
 
   const local = await createClient();
   const now = new Date().toISOString();
-  const { data } = await local.from("curriculum_documents").insert({
-    user_id: userId,
-    owner_type: ownerType,
-    owner_id: ownerId,
-    subject_id: subjectId ?? null,
-    title,
-    document_id: driveFile.id,
-    document_url:
-      driveFile.webViewLink ?? `https://docs.google.com/document/d/${driveFile.id}/edit`,
-    folder_id: folderId,
-    source: GOOGLE_PROVIDER,
-    created_at: now,
-    updated_at: now,
-  }).select("*").single();
+  const { data } = await local
+    .from("curriculum_documents")
+    .insert({
+      user_id: userId,
+      owner_type: ownerType,
+      owner_id: ownerId,
+      subject_id: subjectId ?? null,
+      title,
+      document_id: driveFile.id,
+      document_url:
+        driveFile.webViewLink ??
+        `https://docs.google.com/document/d/${driveFile.id}/edit`,
+      folder_id: folderId,
+      source: GOOGLE_PROVIDER,
+      created_at: now,
+      updated_at: now,
+    })
+    .select("*")
+    .single();
   return data as CurriculumDocument;
 }
 
-export async function getExistingGoogleDocumentTitle(userId: string, documentId: string) {
+export async function getExistingGoogleDocumentTitle(
+  userId: string,
+  documentId: string,
+) {
   const { accessToken } = await getGoogleAccessToken(userId);
   const url = new URL(`${DOCS_API}/documents/${documentId}`);
   url.searchParams.set("fields", "title");
-  const metadata = await googleFetch<GoogleDocumentMetadata>(accessToken, url.toString(), {
-    method: "GET",
-  });
+  const metadata = await googleFetch<GoogleDocumentMetadata>(
+    accessToken,
+    url.toString(),
+    {
+      method: "GET",
+    },
+  );
   const title = metadata.title?.trim();
   if (!title) throw new Error("Google did not return a document title");
   return title;
+}
+
+export async function getGoogleDocumentResourceSnapshot(
+  userId: string,
+  documentId: string,
+) {
+  const { accessToken } = await getGoogleAccessToken(userId);
+  const url = new URL(`${DOCS_API}/documents/${documentId}`);
+  url.searchParams.set("fields", "title,body");
+  const document = await googleFetch<GoogleDocumentSnapshot>(
+    accessToken,
+    url.toString(),
+    { method: "GET" },
+  );
+  const title = document.title?.trim();
+  if (!title) throw new Error("Google did not return a document title");
+  return {
+    title,
+    contentText: extractGoogleDocumentPlainText(document),
+    documentUrl: `https://docs.google.com/document/d/${documentId}/edit`,
+  };
+}
+
+export function extractGoogleDocumentPlainText(
+  document: GoogleDocumentSnapshot,
+) {
+  const sections: string[] = [];
+  collectGoogleDocumentContent(document.body?.content ?? [], sections);
+  return sections
+    .join("\n")
+    .replace(/\u000b/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function collectGoogleDocumentContent(
+  elements: GoogleStructuralElement[],
+  sections: string[],
+) {
+  for (const element of elements) {
+    if (element.paragraph) {
+      const text = (element.paragraph.elements ?? [])
+        .map((part) => part.textRun?.content ?? "")
+        .join("")
+        .trimEnd();
+      if (text.trim()) sections.push(text);
+    }
+
+    if (element.table) {
+      const rows = (element.table.tableRows ?? [])
+        .map((row) =>
+          (row.tableCells ?? [])
+            .map((cell) => {
+              const cellSections: string[] = [];
+              collectGoogleDocumentContent(cell.content ?? [], cellSections);
+              return cellSections.join(" ").trim();
+            })
+            .filter(Boolean)
+            .join("\t"),
+        )
+        .filter(Boolean);
+      if (rows.length > 0) sections.push(rows.join("\n"));
+    }
+
+    if (element.tableOfContents?.content) {
+      collectGoogleDocumentContent(element.tableOfContents.content, sections);
+    }
+  }
 }
 
 export function parseGoogleDocumentId(url: string) {
   const trimmed = url.trim();
   const match =
     trimmed.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/) ??
-    trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ??
+    trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return match?.[1] ?? null;
 }

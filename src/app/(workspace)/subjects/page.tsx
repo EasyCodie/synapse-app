@@ -7,6 +7,7 @@ import Link from "next/link";
 import { BookOpen, CheckSquare, ClipboardList, FileText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
+import { displaySubjectName } from "@/lib/subject-display";
 
 type SubjectItem = {
   id: string;
@@ -20,32 +21,33 @@ export default async function SubjectsPage() {
   await ensureCurriculumScaffold(user.id);
   const local = await createClient();
 
-  const [subjectsResult, syllabusResult, iaResult, notesResult] = await Promise.all([
-    local
-      .from("user_subjects")
-      .select("id, subject_name, level, subject_group")
-      .eq("user_id", user.id)
-      .order("subject_group"),
-    local
-      .from("syllabus_progress")
-      .select("id, subject_id, completed")
-      .eq("user_id", user.id),
-    local
-      .from("internal_assessments")
-      .select("id, subject_id, status")
-      .eq("user_id", user.id),
-    local
-      .from("notes")
-      .select("id, subject_id")
-      .eq("user_id", user.id),
-  ]);
+  const [subjectsResult, syllabusResult, iaResult, notesResult] =
+    await Promise.all([
+      local
+        .from("user_subjects")
+        .select("id, subject_name, level, subject_group")
+        .eq("user_id", user.id)
+        .order("subject_group"),
+      local
+        .from("syllabus_progress")
+        .select("id, subject_id, completed")
+        .eq("user_id", user.id),
+      local
+        .from("internal_assessments")
+        .select("id, subject_id, status")
+        .eq("user_id", user.id),
+      local.from("notes").select("id, subject_id").eq("user_id", user.id),
+    ]);
 
   const subjectList = (subjectsResult.data ?? []) as SubjectItem[];
   const syllabus = (syllabusResult.data ?? []) as Array<{
     subject_id: string;
     completed: boolean;
   }>;
-  const ias = (iaResult.data ?? []) as Array<{ subject_id: string; status: string }>;
+  const ias = (iaResult.data ?? []) as Array<{
+    subject_id: string;
+    status: string;
+  }>;
   const notes = (notesResult.data ?? []) as Array<{ subject_id: string }>;
 
   return (
@@ -87,7 +89,7 @@ export default async function SubjectsPage() {
                   </span>
                 </div>
                 <h3 className="text-body text-ink font-medium group-hover:text-ink">
-                  {subject.subject_name}
+                  {displaySubjectName(subject.subject_name)}
                 </h3>
                 <p className="text-caption text-ink-subtle mt-1">
                   Group {subject.subject_group}
@@ -101,12 +103,19 @@ export default async function SubjectsPage() {
                   <SubjectMetric
                     icon={ClipboardList}
                     label="IA"
-                    value={ias.find((ia) => ia.subject_id === subject.id)?.status?.replace("_", " ") ?? "none"}
+                    value={
+                      ias
+                        .find((ia) => ia.subject_id === subject.id)
+                        ?.status?.replace("_", " ") ?? "none"
+                    }
                   />
                   <SubjectMetric
                     icon={FileText}
                     label="Notes"
-                    value={String(notes.filter((note) => note.subject_id === subject.id).length)}
+                    value={String(
+                      notes.filter((note) => note.subject_id === subject.id)
+                        .length,
+                    )}
                   />
                 </div>
               </Link>
@@ -120,7 +129,7 @@ export default async function SubjectsPage() {
 
 function subjectSyllabusPercent(
   subjectId: string,
-  syllabus: Array<{ subject_id: string; completed: boolean }>
+  syllabus: Array<{ subject_id: string; completed: boolean }>,
 ) {
   const items = syllabus.filter((item) => item.subject_id === subjectId);
   return percent(items.filter((item) => item.completed).length, items.length);

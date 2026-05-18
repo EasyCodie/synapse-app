@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
+import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { Library } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { UploadResource } from "@/components/resources/upload-resource";
@@ -41,36 +42,40 @@ export default async function ResourcesPage() {
   const user = await requireUser();
   const local = await createClient();
 
-  const [resourcesResult, subjectsResult] = await Promise.all([
+  const [resourcesResult, subjectsResult, driveStatus] = await Promise.all([
     local
       .from("resources")
-      .select("id, title, type, tags, subject_id, created_at, file_size, extraction_status, indexing_status, last_index_error")
+      .select(
+        "id, title, type, tags, subject_id, created_at, file_size, extraction_status, indexing_status, last_index_error",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     local
       .from("user_subjects")
       .select("id, subject_name")
       .eq("user_id", user.id),
+    getGoogleDriveStatus(user.id),
   ]);
 
   const resources = (resourcesResult.data ?? []) as ResourceItem[];
   const subjects = (subjectsResult.data ?? []) as ResourceSubject[];
   const subjectMap = Object.fromEntries(
-    subjects.map((s) => [s.id, s.subject_name])
+    subjects.map((s) => [s.id, s.subject_name]),
   );
 
   const resourceIds = resources.map((resource) => resource.id);
-  const { data: indexedResources } = resourceIds.length > 0
-    ? await local
-        .from("embeddings")
-        .select("source_id")
-        .eq("user_id", user.id)
-        .eq("source_type", "resource")
-        .in("source_id", resourceIds)
-    : { data: [] };
+  const { data: indexedResources } =
+    resourceIds.length > 0
+      ? await local
+          .from("embeddings")
+          .select("source_id")
+          .eq("user_id", user.id)
+          .eq("source_type", "resource")
+          .in("source_id", resourceIds)
+      : { data: [] };
 
   const indexedIds = new Set(
-    ((indexedResources ?? []) as IndexedResource[]).map((e) => e.source_id)
+    ((indexedResources ?? []) as IndexedResource[]).map((e) => e.source_id),
   );
 
   const indexedCount = resources.filter((r) => indexedIds.has(r.id)).length;
@@ -83,11 +88,14 @@ export default async function ResourcesPage() {
           <p className="text-body-sm text-ink-subtle mt-1">
             {resources.length} resource{resources.length !== 1 ? "s" : ""}
             {resources.length > 0 && (
-              <span className="text-ink-tertiary"> · {indexedCount} indexed for AI search</span>
+              <span className="text-ink-tertiary">
+                {" "}
+                · {indexedCount} indexed for AI search
+              </span>
             )}
           </p>
         </div>
-        <UploadResource subjects={subjects} />
+        <UploadResource subjects={subjects} driveStatus={driveStatus} />
       </div>
 
       {resources.length === 0 ? (
@@ -102,7 +110,7 @@ export default async function ResourcesPage() {
             const isIndexed = indexedIds.has(resource.id);
             const indexStatus = isIndexed
               ? "indexed"
-              : resource.indexing_status ?? "not_started";
+              : (resource.indexing_status ?? "not_started");
             const extractionStatus = resource.extraction_status ?? "extracted";
             return (
               <div
@@ -111,14 +119,19 @@ export default async function ResourcesPage() {
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 {/* File type badge */}
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${TYPE_COLORS[resource.type] ?? TYPE_COLORS.other}`}>
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${TYPE_COLORS[resource.type] ?? TYPE_COLORS.other}`}
+                >
                   <span className="text-caption font-semibold">
-                    {TYPE_LABELS[resource.type]?.slice(0, 3).toUpperCase() ?? "DOC"}
+                    {TYPE_LABELS[resource.type]?.slice(0, 3).toUpperCase() ??
+                      "DOC"}
                   </span>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-body-sm text-ink truncate">{resource.title}</p>
+                  <p className="text-body-sm text-ink truncate">
+                    {resource.title}
+                  </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-caption text-ink-tertiary">
                       {TYPE_LABELS[resource.type] ?? resource.type}
@@ -141,7 +154,9 @@ export default async function ResourcesPage() {
                     )}
                     {/* Indexed status */}
                     <span className="text-ink-tertiary">·</span>
-                    <span className={`text-caption ${indexStatus === "indexed" ? "text-semantic-success" : indexStatus === "failed" ? "text-destructive" : "text-ink-tertiary"}`}>
+                    <span
+                      className={`text-caption ${indexStatus === "indexed" ? "text-semantic-success" : indexStatus === "failed" ? "text-destructive" : "text-ink-tertiary"}`}
+                    >
                       {formatStatus(indexStatus)}
                     </span>
                     {extractionStatus !== "extracted" && (
@@ -162,14 +177,16 @@ export default async function ResourcesPage() {
 
                 {/* Tags */}
                 <div className="hidden sm:flex gap-1.5 shrink-0">
-                  {(resource.tags as string[]).slice(0, 2).map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="text-caption px-2 py-0.5 bg-surface-2 text-ink-subtle rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                  {(resource.tags as string[])
+                    .slice(0, 2)
+                    .map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="text-caption px-2 py-0.5 bg-surface-2 text-ink-subtle rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                 </div>
 
                 {/* Date */}

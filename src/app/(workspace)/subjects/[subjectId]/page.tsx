@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
 import { getGoogleDriveStatus } from "@/lib/google-drive";
 import { createClient } from "@/lib/local/client";
+import { displaySubjectName } from "@/lib/subject-display";
 
 interface SubjectPageProps {
   params: Promise<{ subjectId: string }>;
@@ -55,31 +56,32 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
 
   const [notesResult, syllabusResult, iaResult, documentsResult, driveStatus] =
     await Promise.all([
-    local
-      .from("notes")
-      .select("id, title, updated_at, folder_path")
-      .eq("user_id", user.id)
-      .eq("subject_id", subjectId)
-      .order("updated_at", { ascending: false }),
-    local
-      .from("syllabus_progress")
-      .select("id, topic_id, topic_title, title, completed")
-      .eq("user_id", user.id)
-      .eq("subject_id", subjectId),
-    local
-      .from("internal_assessments")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("subject_id", subjectId)
-      .single(),
-    local
-      .from("curriculum_documents")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("subject_id", subjectId)
-      .order("created_at", { ascending: false }),
-    getGoogleDriveStatus(user.id),
-  ]);
+      local
+        .from("notes")
+        .select("id, title, updated_at, folder_path")
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId)
+        .order("updated_at", { ascending: false }),
+      local
+        .from("syllabus_progress")
+        .select("id, topic_id, topic_title, title, completed")
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId),
+      local
+        .from("internal_assessments")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId)
+        .single(),
+      local
+        .from("curriculum_documents")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("subject_id", subjectId)
+        .order("created_at", { ascending: false }),
+      getGoogleDriveStatus(user.id),
+    ]);
+  const subjectDisplayName = displaySubjectName(subjectDetail.subject_name);
 
   return (
     <div className="space-y-6">
@@ -93,13 +95,9 @@ export default async function SubjectDetailPage({ params }: SubjectPageProps) {
               Subjects
             </Link>
             <span className="text-ink-tertiary">/</span>
-            <span className="text-body-sm text-ink">
-              {subjectDetail.subject_name}
-            </span>
+            <span className="text-body-sm text-ink">{subjectDisplayName}</span>
           </div>
-          <h1 className="text-headline text-ink">
-            {subjectDetail.subject_name}
-          </h1>
+          <h1 className="text-headline text-ink">{subjectDisplayName}</h1>
           <div className="mt-1 flex items-center gap-2">
             <span
               className={

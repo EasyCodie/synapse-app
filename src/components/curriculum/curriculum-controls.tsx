@@ -21,6 +21,7 @@ import {
   statusLabel,
 } from "@/lib/curriculum-shared";
 import { cn } from "@/lib/utils";
+import { displaySubjectName } from "@/lib/subject-display";
 
 type SubjectDetail = {
   id: string;
@@ -193,7 +194,7 @@ function StatusButtons({
             "rounded-md border px-2.5 py-1.5 text-caption transition-colors duration-200",
             value === status
               ? "border-primary bg-primary/10 text-primary"
-              : "border-hairline bg-surface-1 text-ink-subtle hover:border-hairline-strong hover:text-ink"
+              : "border-hairline bg-surface-1 text-ink-subtle hover:border-hairline-strong hover:text-ink",
           )}
         >
           {statusLabel(status)}
@@ -256,7 +257,9 @@ export function SubjectWorkspace({
                 {completed} of {syllabus.length} topics complete
               </h2>
             </div>
-            <span className="text-headline text-primary">{syllabusPercent}%</span>
+            <span className="text-headline text-primary">
+              {syllabusPercent}%
+            </span>
           </div>
           <div className="mt-4">
             <ProgressBar value={syllabusPercent} />
@@ -289,7 +292,7 @@ export function SubjectWorkspace({
                       "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
                       item.completed
                         ? "border-primary bg-primary text-on-primary"
-                        : "border-hairline-strong text-transparent"
+                        : "border-hairline-strong text-transparent",
                     )}
                   >
                     <Check className="h-3 w-3" />
@@ -298,7 +301,9 @@ export function SubjectWorkspace({
                     <span
                       className={cn(
                         "block text-body-sm",
-                        item.completed ? "text-ink-subtle line-through" : "text-ink"
+                        item.completed
+                          ? "text-ink-subtle line-through"
+                          : "text-ink",
                       )}
                     >
                       {item.title ?? item.topic_id}
@@ -329,7 +334,10 @@ export function SubjectWorkspace({
             <button
               type="submit"
               disabled={isPending || !noteTitle.trim()}
-              className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+              className={cn(
+                buttonClass,
+                "bg-primary text-on-primary hover:bg-primary-hover",
+              )}
               aria-label="Add note"
             >
               <Plus className="h-4 w-4" />
@@ -346,7 +354,9 @@ export function SubjectWorkspace({
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-ink-tertiary" />
-                    <p className="truncate text-body-sm text-ink">{note.title}</p>
+                    <p className="truncate text-body-sm text-ink">
+                      {note.title}
+                    </p>
                   </div>
                   <p className="mt-1 text-caption text-ink-tertiary">
                     {note.folder_path}
@@ -361,8 +371,10 @@ export function SubjectWorkspace({
           ownerType="subject"
           ownerId={subject.id}
           title="Google Docs"
-          defaultTitle={`${subject.subject_name} Notes`}
-          documents={documents.filter((document) => document.owner_type === "subject")}
+          defaultTitle={`${displaySubjectName(subject.subject_name)} Notes`}
+          documents={documents.filter(
+            (document) => document.owner_type === "subject",
+          )}
           driveStatus={driveStatus}
         />
 
@@ -372,12 +384,15 @@ export function SubjectWorkspace({
             <IAQuickEditor
               ia={ia}
               compact
-              documents={documents.filter((document) => document.owner_id === ia.id)}
+              documents={documents.filter(
+                (document) => document.owner_id === ia.id,
+              )}
               driveStatus={driveStatus}
             />
           ) : (
             <p className="mt-3 text-body-sm text-ink-subtle">
-              No IA tracker exists for {subject.subject_name}.
+              No IA tracker exists for{" "}
+              {displaySubjectName(subject.subject_name)}.
             </p>
           )}
         </section>
@@ -441,9 +456,12 @@ export function DriveDocumentPanel({
 
   function unlinkDocument(id: string) {
     mutate(async () => {
-      const response = await fetch(`/api/curriculum/documents?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/curriculum/documents?id=${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!response.ok) throw new Error("Could not unlink document");
     });
   }
@@ -473,7 +491,10 @@ export function DriveDocumentPanel({
               type="button"
               disabled={isPending || !docTitle.trim()}
               onClick={createDocument}
-              className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+              className={cn(
+                buttonClass,
+                "bg-primary text-on-primary hover:bg-primary-hover",
+              )}
             >
               <Plus className="h-4 w-4" />
               Create Doc
@@ -481,14 +502,18 @@ export function DriveDocumentPanel({
           ) : driveStatus.configured ? (
             <a
               href={`/api/integrations/google/connect?returnTo=${encodeURIComponent(pathname)}`}
-              className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+              className={cn(
+                buttonClass,
+                "bg-primary text-on-primary hover:bg-primary-hover",
+              )}
             >
               <Cloud className="h-4 w-4" />
               Connect Drive
             </a>
           ) : (
             <p className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-caption text-ink-subtle">
-              Add Google OAuth environment variables to enable document creation.
+              Add Google OAuth environment variables to enable document
+              creation.
             </p>
           )}
         </div>
@@ -504,7 +529,10 @@ export function DriveDocumentPanel({
         <button
           type="submit"
           disabled={isPending || !linkUrl.trim()}
-          className={cn(buttonClass, "border border-hairline bg-surface-2 text-ink hover:border-hairline-strong")}
+          className={cn(
+            buttonClass,
+            "border border-hairline bg-surface-2 text-ink hover:border-hairline-strong",
+          )}
           aria-label="Link Google Doc"
         >
           <Link2 className="h-4 w-4" />
@@ -513,7 +541,9 @@ export function DriveDocumentPanel({
 
       <div className="mt-4 space-y-2">
         {documents.length === 0 ? (
-          <p className="text-body-sm text-ink-subtle">No Google Docs linked yet.</p>
+          <p className="text-body-sm text-ink-subtle">
+            No Google Docs linked yet.
+          </p>
         ) : (
           documents.map((document) => (
             <div
@@ -570,10 +600,12 @@ export function IAQuickEditor({
 }) {
   const { error, isPending, mutate } = useMutation();
   const [title, setTitle] = useState(ia.title ?? "");
-  const [researchQuestion, setResearchQuestion] = useState(ia.research_question ?? "");
+  const [researchQuestion, setResearchQuestion] = useState(
+    ia.research_question ?? "",
+  );
   const [wordCount, setWordCount] = useState(String(ia.word_count ?? 0));
   const [targetWordCount, setTargetWordCount] = useState(
-    String(ia.target_word_count ?? "")
+    String(ia.target_word_count ?? ""),
   );
   const [dueDate, setDueDate] = useState(ia.due_date ?? "");
 
@@ -607,7 +639,7 @@ export function IAQuickEditor({
 
   function toggleMilestone(milestone: Milestone) {
     const milestones = (ia.milestones ?? []).map((item) =>
-      item.id === milestone.id ? { ...item, completed: !item.completed } : item
+      item.id === milestone.id ? { ...item, completed: !item.completed } : item,
     );
     mutate(async () => {
       await requestJson("/api/curriculum/ia", {
@@ -626,7 +658,9 @@ export function IAQuickEditor({
         onChange={updateStatus}
       />
 
-      <div className={cn("grid gap-3", compact ? "grid-cols-1" : "md:grid-cols-2")}>
+      <div
+        className={cn("grid gap-3", compact ? "grid-cols-1" : "md:grid-cols-2")}
+      >
         <label className="space-y-1.5">
           <span className="text-caption text-ink-subtle">Title</span>
           <input
@@ -645,7 +679,9 @@ export function IAQuickEditor({
           />
         </label>
         <label className={cn("space-y-1.5", !compact && "md:col-span-2")}>
-          <span className="text-caption text-ink-subtle">Research question</span>
+          <span className="text-caption text-ink-subtle">
+            Research question
+          </span>
           <textarea
             value={researchQuestion}
             onChange={(event) => setResearchQuestion(event.target.value)}
@@ -679,7 +715,9 @@ export function IAQuickEditor({
         <div className="space-y-1.5">
           <div className="flex justify-between text-caption text-ink-subtle">
             <span>Draft length</span>
-            <span>{words} / {target}</span>
+            <span>
+              {words} / {target}
+            </span>
           </div>
           <ProgressBar value={(words / target) * 100} />
         </div>
@@ -701,7 +739,7 @@ export function IAQuickEditor({
                   "flex h-4 w-4 items-center justify-center rounded-sm border",
                   milestone.completed
                     ? "border-primary bg-primary text-on-primary"
-                    : "border-hairline-strong"
+                    : "border-hairline-strong",
                 )}
               >
                 {milestone.completed && <Check className="h-3 w-3" />}
@@ -716,7 +754,10 @@ export function IAQuickEditor({
         type="button"
         disabled={isPending}
         onClick={saveDetails}
-        className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}
+        className={cn(
+          buttonClass,
+          "bg-primary text-on-primary hover:bg-primary-hover",
+        )}
       >
         <Save className="h-4 w-4" />
         Save IA
@@ -757,8 +798,12 @@ export function IAManagerBoard({
           return (
             <section key={status} className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-eyebrow text-ink-subtle">{statusLabel(status)}</p>
-                <span className="text-caption text-ink-tertiary">{columnIas.length}</span>
+                <p className="text-eyebrow text-ink-subtle">
+                  {statusLabel(status)}
+                </p>
+                <span className="text-caption text-ink-tertiary">
+                  {columnIas.length}
+                </span>
               </div>
               {columnIas.length === 0 ? (
                 <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-hairline text-caption text-ink-tertiary">
@@ -766,7 +811,9 @@ export function IAManagerBoard({
                 </div>
               ) : (
                 columnIas.map((ia) => {
-                  const subject = ia.subject_id ? subjectMap.get(ia.subject_id) : null;
+                  const subject = ia.subject_id
+                    ? subjectMap.get(ia.subject_id)
+                    : null;
                   const target = ia.target_word_count ?? 0;
                   return (
                     <button
@@ -775,12 +822,16 @@ export function IAManagerBoard({
                       onClick={() => setSelectedId(ia.id)}
                       className={cn(
                         "w-full rounded-lg border bg-surface-1 p-4 text-left transition-colors duration-200 hover:border-hairline-strong hover:bg-surface-2",
-                        selected?.id === ia.id ? "border-primary/60" : "border-hairline"
+                        selected?.id === ia.id
+                          ? "border-primary/60"
+                          : "border-hairline",
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-body-sm text-ink">
-                          {subject?.subject_name ?? "Unknown subject"}
+                          {subject
+                            ? displaySubjectName(subject.subject_name)
+                            : "Unknown subject"}
                         </p>
                         <span className="rounded-sm bg-surface-3 px-1.5 py-0.5 text-caption text-ink-subtle">
                           {subject?.level ?? ""}
@@ -815,7 +866,9 @@ export function IAManagerBoard({
           <IAQuickEditor
             ia={selected}
             compact
-            documents={documents.filter((document) => document.owner_id === selected.id)}
+            documents={documents.filter(
+              (document) => document.owner_id === selected.id,
+            )}
             driveStatus={driveStatus}
           />
         ) : (
@@ -841,7 +894,9 @@ export function EEEditor({
   const [title, setTitle] = useState(ee.title ?? "");
   const [subject, setSubject] = useState(ee.subject ?? "");
   const [supervisor, setSupervisor] = useState(ee.supervisor ?? "");
-  const [researchQuestion, setResearchQuestion] = useState(ee.research_question ?? "");
+  const [researchQuestion, setResearchQuestion] = useState(
+    ee.research_question ?? "",
+  );
   const [wordCount, setWordCount] = useState(String(ee.word_count ?? 0));
   const milestones = normalizeEeMilestones(ee.milestones);
 
@@ -867,7 +922,9 @@ export function EEEditor({
   function toggleMilestone(milestone: Milestone) {
     update({
       milestones: milestones.map((item) =>
-        item.id === milestone.id ? { ...item, completed: !item.completed } : item
+        item.id === milestone.id
+          ? { ...item, completed: !item.completed }
+          : item,
       ),
     });
   }
@@ -878,23 +935,48 @@ export function EEEditor({
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1.5 md:col-span-2">
             <span className="text-caption text-ink-subtle">Working title</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} />
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="space-y-1.5">
             <span className="text-caption text-ink-subtle">Subject</span>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} className={fieldClass} />
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="space-y-1.5">
             <span className="text-caption text-ink-subtle">Supervisor</span>
-            <input value={supervisor} onChange={(e) => setSupervisor(e.target.value)} className={fieldClass} />
+            <input
+              value={supervisor}
+              onChange={(e) => setSupervisor(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="space-y-1.5 md:col-span-2">
-            <span className="text-caption text-ink-subtle">Research question</span>
-            <textarea value={researchQuestion} onChange={(e) => setResearchQuestion(e.target.value)} rows={3} className={fieldClass} />
+            <span className="text-caption text-ink-subtle">
+              Research question
+            </span>
+            <textarea
+              value={researchQuestion}
+              onChange={(e) => setResearchQuestion(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
           </label>
           <label className="space-y-1.5">
             <span className="text-caption text-ink-subtle">Word count</span>
-            <input type="number" min={0} value={wordCount} onChange={(e) => setWordCount(e.target.value)} className={fieldClass} />
+            <input
+              type="number"
+              min={0}
+              value={wordCount}
+              onChange={(e) => setWordCount(e.target.value)}
+              className={fieldClass}
+            />
           </label>
         </div>
         <div className="mt-4 space-y-1.5">
@@ -905,7 +987,15 @@ export function EEEditor({
           <ProgressBar value={((Number(wordCount) || 0) / 4000) * 100} />
         </div>
         <div className="mt-4">
-          <button type="button" disabled={isPending} onClick={saveDetails} className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={saveDetails}
+            className={cn(
+              buttonClass,
+              "bg-primary text-on-primary hover:bg-primary-hover",
+            )}
+          >
             <Save className="h-4 w-4" />
             Save EE
           </button>
@@ -915,11 +1005,29 @@ export function EEEditor({
 
       <aside className="space-y-4 rounded-lg border border-hairline bg-surface-1 p-5">
         <h2 className="text-card-title text-ink">EE Milestones</h2>
-        <StatusButtons statuses={CORE_STATUSES} value={ee.status ?? "planning"} disabled={isPending} onChange={(status) => update({ status })} />
+        <StatusButtons
+          statuses={CORE_STATUSES}
+          value={ee.status ?? "planning"}
+          disabled={isPending}
+          onChange={(status) => update({ status })}
+        />
         <div className="space-y-2">
           {milestones.map((milestone) => (
-            <button key={milestone.id} type="button" disabled={isPending} onClick={() => toggleMilestone(milestone)} className="flex w-full items-center gap-2 rounded-md border border-hairline bg-surface-2 px-3 py-2 text-left text-body-sm text-ink transition-colors hover:border-hairline-strong">
-              <span className={cn("flex h-4 w-4 items-center justify-center rounded-sm border", milestone.completed ? "border-primary bg-primary text-on-primary" : "border-hairline-strong")}>
+            <button
+              key={milestone.id}
+              type="button"
+              disabled={isPending}
+              onClick={() => toggleMilestone(milestone)}
+              className="flex w-full items-center gap-2 rounded-md border border-hairline bg-surface-2 px-3 py-2 text-left text-body-sm text-ink transition-colors hover:border-hairline-strong"
+            >
+              <span
+                className={cn(
+                  "flex h-4 w-4 items-center justify-center rounded-sm border",
+                  milestone.completed
+                    ? "border-primary bg-primary text-on-primary"
+                    : "border-hairline-strong",
+                )}
+              >
                 {milestone.completed && <Check className="h-3 w-3" />}
               </span>
               {milestone.title}
@@ -967,10 +1075,15 @@ export function TOKEditor({
   driveStatus: DriveStatus;
 }) {
   const { error, isPending, mutate } = useMutation();
-  const [prescribedTitle, setPrescribedTitle] = useState(tok.prescribed_title ?? "");
+  const [prescribedTitle, setPrescribedTitle] = useState(
+    tok.prescribed_title ?? "",
+  );
   const [essayTitle, setEssayTitle] = useState(tok.essay_title ?? "");
   const [objects, setObjects] = useState(
-    [0, 1, 2].map((index) => tok.exhibition_objects?.[index] ?? { title: "", description: "" })
+    [0, 1, 2].map(
+      (index) =>
+        tok.exhibition_objects?.[index] ?? { title: "", description: "" },
+    ),
   );
 
   function update(payload: Record<string, unknown>) {
@@ -995,17 +1108,42 @@ export function TOKEditor({
       <section className="rounded-lg border border-hairline bg-surface-1 p-5">
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-caption text-ink-subtle">Prescribed title</span>
-            <textarea value={prescribedTitle} onChange={(e) => setPrescribedTitle(e.target.value)} rows={3} className={fieldClass} />
+            <span className="text-caption text-ink-subtle">
+              Prescribed title
+            </span>
+            <textarea
+              value={prescribedTitle}
+              onChange={(e) => setPrescribedTitle(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
           </label>
           <label className="space-y-1.5">
             <span className="text-caption text-ink-subtle">Essay angle</span>
-            <textarea value={essayTitle} onChange={(e) => setEssayTitle(e.target.value)} rows={3} className={fieldClass} />
+            <textarea
+              value={essayTitle}
+              onChange={(e) => setEssayTitle(e.target.value)}
+              rows={3}
+              className={fieldClass}
+            />
           </label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <StatusButtons statuses={CORE_STATUSES} value={tok.status ?? "planning"} disabled={isPending} onChange={(status) => update({ status })} />
-          <button type="button" disabled={isPending} onClick={saveDetails} className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}>
+          <StatusButtons
+            statuses={CORE_STATUSES}
+            value={tok.status ?? "planning"}
+            disabled={isPending}
+            onChange={(status) => update({ status })}
+          />
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={saveDetails}
+            className={cn(
+              buttonClass,
+              "bg-primary text-on-primary hover:bg-primary-hover",
+            )}
+          >
             <Save className="h-4 w-4" />
             Save TOK
           </button>
@@ -1017,17 +1155,38 @@ export function TOKEditor({
         <h2 className="text-card-title text-ink">Exhibition Objects</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {objects.map((object, index) => (
-            <div key={index} className="space-y-2 rounded-md border border-hairline bg-surface-2 p-3">
-              <p className="text-caption text-ink-tertiary">Object {index + 1}</p>
+            <div
+              key={index}
+              className="space-y-2 rounded-md border border-hairline bg-surface-2 p-3"
+            >
+              <p className="text-caption text-ink-tertiary">
+                Object {index + 1}
+              </p>
               <input
                 value={object.title ?? ""}
-                onChange={(event) => setObjects((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))}
+                onChange={(event) =>
+                  setObjects((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, title: event.target.value }
+                        : item,
+                    ),
+                  )
+                }
                 placeholder="Object title"
                 className={fieldClass}
               />
               <textarea
                 value={object.description ?? ""}
-                onChange={(event) => setObjects((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))}
+                onChange={(event) =>
+                  setObjects((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, description: event.target.value }
+                        : item,
+                    ),
+                  )
+                }
                 placeholder="Connection to prompt"
                 rows={3}
                 className={fieldClass}
@@ -1087,9 +1246,12 @@ export function CASEditor({
 
   function deleteExperience(id: string) {
     mutate(async () => {
-      const response = await fetch(`/api/curriculum/cas?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/curriculum/cas?id=${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!response.ok) throw new Error("Could not delete CAS experience");
     });
   }
@@ -1097,14 +1259,45 @@ export function CASEditor({
   return (
     <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
       <div className="space-y-4">
-        <form onSubmit={createExperience} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-5">
+        <form
+          onSubmit={createExperience}
+          className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-5"
+        >
           <h2 className="text-card-title text-ink">New Experience</h2>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Experience title" className={fieldClass} />
-          <select value={type} onChange={(e) => setType(e.target.value as (typeof CAS_TYPES)[number])} className={fieldClass}>
-            {CAS_TYPES.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Experience title"
+            className={fieldClass}
+          />
+          <select
+            value={type}
+            onChange={(e) =>
+              setType(e.target.value as (typeof CAS_TYPES)[number])
+            }
+            className={fieldClass}
+          >
+            {CAS_TYPES.map((item) => (
+              <option key={item} value={item}>
+                {statusLabel(item)}
+              </option>
+            ))}
           </select>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Reflection or evidence notes" rows={4} className={fieldClass} />
-          <button type="submit" disabled={isPending || !title.trim()} className={cn(buttonClass, "bg-primary text-on-primary hover:bg-primary-hover")}>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Reflection or evidence notes"
+            rows={4}
+            className={fieldClass}
+          />
+          <button
+            type="submit"
+            disabled={isPending || !title.trim()}
+            className={cn(
+              buttonClass,
+              "bg-primary text-on-primary hover:bg-primary-hover",
+            )}
+          >
             <Plus className="h-4 w-4" />
             Add CAS
           </button>
@@ -1127,11 +1320,16 @@ export function CASEditor({
           </div>
         ) : (
           experiences.map((experience) => (
-            <div key={experience.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
+            <div
+              key={experience.id}
+              className="rounded-lg border border-hairline bg-surface-1 p-4"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-body text-ink">{experience.title}</p>
-                  <p className="text-caption text-ink-subtle">{statusLabel(experience.type)}</p>
+                  <p className="text-caption text-ink-subtle">
+                    {statusLabel(experience.type)}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   {["planned", "in_progress", "complete"].map((status) => (
@@ -1139,24 +1337,33 @@ export function CASEditor({
                       key={status}
                       type="button"
                       disabled={isPending}
-                      onClick={() => updateExperience(experience.id, { status })}
+                      onClick={() =>
+                        updateExperience(experience.id, { status })
+                      }
                       className={cn(
                         "rounded-md border px-2 py-1 text-caption transition-colors",
                         experience.status === status
                           ? "border-primary bg-primary/10 text-primary"
-                          : "border-hairline text-ink-subtle hover:border-hairline-strong"
+                          : "border-hairline text-ink-subtle hover:border-hairline-strong",
                       )}
                     >
                       {statusLabel(status)}
                     </button>
                   ))}
-                  <button type="button" disabled={isPending} onClick={() => deleteExperience(experience.id)} className="rounded-md border border-hairline p-2 text-ink-tertiary transition-colors hover:border-hairline-strong hover:text-ink">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => deleteExperience(experience.id)}
+                    className="rounded-md border border-hairline p-2 text-ink-tertiary transition-colors hover:border-hairline-strong hover:text-ink"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
               {experience.description && (
-                <p className="mt-3 text-body-sm text-ink-subtle">{experience.description}</p>
+                <p className="mt-3 text-body-sm text-ink-subtle">
+                  {experience.description}
+                </p>
               )}
             </div>
           ))

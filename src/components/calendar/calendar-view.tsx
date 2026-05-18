@@ -15,14 +15,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  FileText,
   Flag,
   GraduationCap,
   ListFilter,
+  Link2,
   MapPin,
+  Pencil,
   Plus,
   School,
   Sparkles,
   Trash2,
+  Upload,
   UserRound,
   X,
 } from "lucide-react";
@@ -35,6 +39,7 @@ import {
   type CalendarSubject,
   type SchoolScheduleEntry,
 } from "@/lib/school-schedule";
+import { displaySubjectName } from "@/lib/subject-display";
 
 type CalendarMode = "month" | "week" | "day";
 type LayerKey = "classes" | "tasks" | "deadlines" | "study";
@@ -48,7 +53,10 @@ interface Task {
   priority: "low" | "medium" | "high" | "urgent";
   completed: boolean;
   subject_id: string | null;
+  source_title: string | null;
+  source_url: string | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 interface Milestone {
@@ -125,6 +133,30 @@ type ScheduleEntryInput = {
   teacher: string | null;
 };
 
+type TaskInput = {
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  due_time: string | null;
+  priority: Task["priority"];
+  subject_id: string | null;
+  source_title: string | null;
+  source_url: string | null;
+  completed?: boolean;
+};
+
+type MutationResult = Promise<{ ok: boolean; error: string | null }>;
+
+type ScheduleImportResult = {
+  ok: boolean;
+  error: string | null;
+  imported: number;
+  skipped: number;
+  issues: Array<{ row: number; message: string }>;
+  processor: "ai" | "deterministic" | null;
+  model: string | null;
+};
+
 const MONTH_NAMES = [
   "January",
   "February",
@@ -193,6 +225,57 @@ const SUBJECT_STYLES = [
   },
 ];
 
+const NAMED_SUBJECT_STYLES: Record<string, (typeof SUBJECT_STYLES)[number]> = {
+  biology: {
+    bg: "bg-green-500/10",
+    border: "border-green-400/30",
+    dot: "bg-green-400",
+    text: "text-green-300",
+  },
+  spanish: {
+    bg: "bg-red-500/10",
+    border: "border-red-400/30",
+    dot: "bg-red-400",
+    text: "text-red-300",
+  },
+  math: {
+    bg: "bg-purple-500/10",
+    border: "border-purple-400/30",
+    dot: "bg-purple-400",
+    text: "text-purple-300",
+  },
+  mathematics: {
+    bg: "bg-purple-500/10",
+    border: "border-purple-400/30",
+    dot: "bg-purple-400",
+    text: "text-purple-300",
+  },
+  economics: {
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-400/30",
+    dot: "bg-yellow-400",
+    text: "text-yellow-300",
+  },
+  "business and management": {
+    bg: "bg-blue-500/10",
+    border: "border-blue-400/30",
+    dot: "bg-blue-400",
+    text: "text-blue-300",
+  },
+  business: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-400/30",
+    dot: "bg-blue-400",
+    text: "text-blue-300",
+  },
+  english: {
+    bg: "bg-orange-500/10",
+    border: "border-orange-400/30",
+    dot: "bg-orange-400",
+    text: "text-orange-300",
+  },
+};
+
 const DAY_START_MINUTES = 7 * 60;
 const DAY_END_MINUTES = 19 * 60;
 const HOUR_HEIGHT = 44;
@@ -205,7 +288,7 @@ function dateFromKey(dateKey: string) {
 
 function formatDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
+    date.getDate(),
   ).padStart(2, "0")}`;
 }
 
@@ -248,7 +331,10 @@ function getMonthGridDays(viewDate: Date) {
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    cells.push({ dateKey: formatDateKey(new Date(year, month, day)), inMonth: true });
+    cells.push({
+      dateKey: formatDateKey(new Date(year, month, day)),
+      inMonth: true,
+    });
   }
 
   while (cells.length % 7 !== 0) {
@@ -281,17 +367,42 @@ function hashString(value: string) {
 }
 
 function getSubjectStyle(subject: string) {
+  const namedStyle = getNamedSubjectStyle(subject);
+  if (namedStyle) return namedStyle;
+
   return SUBJECT_STYLES[hashString(subject) % SUBJECT_STYLES.length]!;
 }
 
+function getNamedSubjectStyle(subject: string) {
+  const key = normalizeSubjectStyleKey(subject);
+  if (NAMED_SUBJECT_STYLES[key]) return NAMED_SUBJECT_STYLES[key];
+  if (key.includes("biology")) return NAMED_SUBJECT_STYLES.biology;
+  if (key.includes("spanish")) return NAMED_SUBJECT_STYLES.spanish;
+  if (key.includes("math")) return NAMED_SUBJECT_STYLES.math;
+  if (key.includes("economics")) return NAMED_SUBJECT_STYLES.economics;
+  if (key.includes("business")) return NAMED_SUBJECT_STYLES.business;
+  if (key.includes("english")) return NAMED_SUBJECT_STYLES.english;
+  return null;
+}
+
+function normalizeSubjectStyleKey(subject: string) {
+  return subject
+    .toLowerCase()
+    .replace(/\b(?:hl|sl)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function dayDifference(fromDateKey: string, toDateKey: string) {
-  const diff = dateFromKey(toDateKey).getTime() - dateFromKey(fromDateKey).getTime();
+  const diff =
+    dateFromKey(toDateKey).getTime() - dateFromKey(fromDateKey).getTime();
   return Math.round(diff / 86_400_000);
 }
 
 function buildDeadlines(
   milestones: Milestone[],
-  roadmapItems: RoadmapCalendarItem[]
+  roadmapItems: RoadmapCalendarItem[],
 ): DeadlineItem[] {
   const milestoneDeadlines = milestones.map((milestone) => ({
     id: `milestone-${milestone.id}`,
@@ -316,7 +427,7 @@ function buildDeadlines(
     }));
 
   return [...milestoneDeadlines, ...roadmapDeadlines].sort((a, b) =>
-    a.date.localeCompare(b.date)
+    a.date.localeCompare(b.date),
   );
 }
 
@@ -348,12 +459,16 @@ function buildStudyCandidates(tasks: Task[], deadlines: DeadlineItem[]) {
 
 function classesForDate(entries: SchoolScheduleEntry[], dateKey: string) {
   const weekday = dateFromKey(dateKey).getDay();
-  return sortScheduleEntries(entries.filter((entry) => entry.weekday === weekday));
+  return sortScheduleEntries(
+    entries.filter((entry) => entry.weekday === weekday),
+  );
 }
 
 function findStudySlot(classes: SchoolScheduleEntry[], dateKey: string) {
   const weekday = dateFromKey(dateKey).getDay();
-  const sorted = [...classes].sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const sorted = [...classes].sort((a, b) =>
+    a.start_time.localeCompare(b.start_time),
+  );
 
   if (sorted.length === 0) {
     if (weekday === 0 || weekday === 6) return null;
@@ -364,15 +479,23 @@ function findStudySlot(classes: SchoolScheduleEntry[], dateKey: string) {
     const gapStart = timeToMinutes(sorted[index]!.end_time) + 10;
     const gapEnd = timeToMinutes(sorted[index + 1]!.start_time) - 10;
     if (gapEnd - gapStart >= 45) {
-      return { start: gapStart, end: gapStart + Math.min(STUDY_DURATION_MINUTES, gapEnd - gapStart) };
+      return {
+        start: gapStart,
+        end: gapStart + Math.min(STUDY_DURATION_MINUTES, gapEnd - gapStart),
+      };
     }
   }
 
-  const afterLast = Math.max(timeToMinutes(sorted[sorted.length - 1]!.end_time) + 20, 15 * 60);
+  const afterLast = Math.max(
+    timeToMinutes(sorted[sorted.length - 1]!.end_time) + 20,
+    15 * 60,
+  );
   if (DAY_END_MINUTES - afterLast >= 45) {
     return {
       start: afterLast,
-      end: afterLast + Math.min(STUDY_DURATION_MINUTES, DAY_END_MINUTES - afterLast),
+      end:
+        afterLast +
+        Math.min(STUDY_DURATION_MINUTES, DAY_END_MINUTES - afterLast),
     };
   }
 
@@ -393,7 +516,7 @@ function studyBlocksForDate(
   dateKey: string,
   classes: SchoolScheduleEntry[],
   candidates: ReturnType<typeof buildStudyCandidates>,
-  todayKey: string
+  todayKey: string,
 ): StudyBlock[] {
   if (dateKey < todayKey) return [];
 
@@ -433,6 +556,15 @@ function timeRange(startTime: string | null, endTime?: string | null) {
   return endTime ? `${startTime}-${endTime}` : startTime;
 }
 
+function sortTasks(tasks: Task[]) {
+  return [...tasks].sort((a, b) => {
+    const leftDate = a.due_date ?? "9999-12-31";
+    const rightDate = b.due_date ?? "9999-12-31";
+    if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+    return (a.due_time ?? "23:59").localeCompare(b.due_time ?? "23:59");
+  });
+}
+
 export function CalendarView({
   initialTasks,
   initialMilestones,
@@ -447,7 +579,7 @@ export function CalendarView({
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [scheduleEntries, setScheduleEntries] = useState<SchoolScheduleEntry[]>(
-    sortScheduleEntries(initialScheduleEntries)
+    sortScheduleEntries(initialScheduleEntries),
   );
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
     classes: true,
@@ -456,41 +588,51 @@ export function CalendarView({
     study: true,
   });
   const [showAddTask, setShowAddTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showScheduleSetup, setShowScheduleSetup] = useState(false);
   const [motionDirection, setMotionDirection] = useState(0);
 
   const deadlines = useMemo(
     () => buildDeadlines(initialMilestones, initialRoadmapItems),
-    [initialMilestones, initialRoadmapItems]
+    [initialMilestones, initialRoadmapItems],
   );
 
   const studyCandidates = useMemo(
     () => buildStudyCandidates(tasks, deadlines),
-    [tasks, deadlines]
+    [tasks, deadlines],
   );
 
   const monthCells = useMemo(() => getMonthGridDays(viewDate), [viewDate]);
   const weekDays = useMemo(() => getWeekDays(viewDate), [viewDate]);
   const openTasks = tasks.filter((task) => !task.completed);
-  const overdueTasks = openTasks.filter((task) => task.due_date && task.due_date < todayKey);
+  const overdueTasks = openTasks.filter(
+    (task) => task.due_date && task.due_date < todayKey,
+  );
 
   const getDaySummary = useCallback(
     (dateKey: string): DaySummary => {
       const classes = classesForDate(scheduleEntries, dateKey);
       const dayTasks = tasks.filter(
-        (task) => !task.completed && task.due_date === dateKey
+        (task) => !task.completed && task.due_date === dateKey,
       );
-      const dayDeadlines = deadlines.filter((deadline) => deadline.date === dateKey);
+      const dayDeadlines = deadlines.filter(
+        (deadline) => deadline.date === dateKey,
+      );
 
       return {
         dateKey,
         classes,
         tasks: dayTasks,
         deadlines: dayDeadlines,
-        studyBlocks: studyBlocksForDate(dateKey, classes, studyCandidates, todayKey),
+        studyBlocks: studyBlocksForDate(
+          dateKey,
+          classes,
+          studyCandidates,
+          todayKey,
+        ),
       };
     },
-    [deadlines, scheduleEntries, studyCandidates, tasks, todayKey]
+    [deadlines, scheduleEntries, studyCandidates, tasks, todayKey],
   );
 
   const selectedSummary = getDaySummary(selectedDate);
@@ -530,7 +672,7 @@ export function CalendarView({
 
   const toggleTask = useCallback(async (id: string, completed: boolean) => {
     setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, completed } : task))
+      prev.map((task) => (task.id === id ? { ...task, completed } : task)),
     );
     await fetch("/api/tasks", {
       method: "PATCH",
@@ -544,21 +686,45 @@ export function CalendarView({
     await fetch(`/api/tasks?id=${id}`, { method: "DELETE" });
   }, []);
 
-  const addTask = useCallback(
-    async (title: string, dueDate: string, priority: string) => {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, due_date: dueDate, priority }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { task: Task };
-        setTasks((prev) => [...prev, data.task]);
-      }
+  const addTask = useCallback(async (task: TaskInput) => {
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(task),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { task: Task };
+      setTasks((prev) => sortTasks([...prev, data.task]));
       setShowAddTask(false);
-    },
-    []
-  );
+      return { ok: true, error: null };
+    }
+    const data = (await res.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    return { ok: false, error: data?.error ?? "Could not create this task." };
+  }, []);
+
+  const updateTask = useCallback(async (id: string, task: TaskInput) => {
+    const response = await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...task }),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      return { ok: false, error: data?.error ?? "Could not update this task." };
+    }
+
+    const data = (await response.json()) as { task: Task };
+    setTasks((prev) =>
+      sortTasks(prev.map((item) => (item.id === id ? data.task : item))),
+    );
+    setEditingTask(null);
+    return { ok: true, error: null };
+  }, []);
 
   const addScheduleEntry = useCallback(async (entry: ScheduleEntryInput) => {
     const response = await fetch("/api/school-schedule", {
@@ -568,7 +734,9 @@ export function CalendarView({
     });
 
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       return { ok: false, error: data?.error ?? "Could not save this class." };
     }
 
@@ -578,14 +746,73 @@ export function CalendarView({
   }, []);
 
   const deleteScheduleEntry = useCallback(async (id: string) => {
-    const response = await fetch(`/api/school-schedule?id=${id}`, { method: "DELETE" });
+    const response = await fetch(`/api/school-schedule?id=${id}`, {
+      method: "DELETE",
+    });
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
-      return { ok: false, error: data?.error ?? "Could not delete this class." };
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      return {
+        ok: false,
+        error: data?.error ?? "Could not delete this class.",
+      };
     }
     setScheduleEntries((prev) => prev.filter((entry) => entry.id !== id));
     return { ok: true, error: null };
   }, []);
+
+  const importScheduleFile = useCallback(
+    async (file: File, replace: boolean): Promise<ScheduleImportResult> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("replace", String(replace));
+
+      const response = await fetch("/api/school-schedule/import", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await response.json().catch(() => null)) as {
+        entries?: SchoolScheduleEntry[];
+        imported?: number;
+        skipped_duplicates?: number;
+        issues?: Array<{ row: number; message: string }>;
+        processor?: "ai" | "deterministic";
+        model?: string | null;
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: data?.error ?? "Could not import this schedule file.",
+          imported: 0,
+          skipped: 0,
+          issues: data?.issues ?? [],
+          processor: data?.processor ?? null,
+          model: data?.model ?? null,
+        };
+      }
+
+      const importedEntries = data?.entries ?? [];
+      setScheduleEntries((prev) =>
+        replace
+          ? importedEntries
+          : sortScheduleEntries([...prev, ...importedEntries]),
+      );
+
+      return {
+        ok: true,
+        error: null,
+        imported: data?.imported ?? importedEntries.length,
+        skipped: data?.skipped_duplicates ?? 0,
+        issues: data?.issues ?? [],
+        processor: data?.processor ?? null,
+        model: data?.model ?? null,
+      };
+    },
+    [],
+  );
 
   return (
     <div className="space-y-5">
@@ -595,9 +822,13 @@ export function CalendarView({
           <p className="mt-1 text-body-sm text-ink-subtle">
             {openTasks.length} open tasks
             {overdueTasks.length > 0 && (
-              <span className="ml-2 text-red-400">{overdueTasks.length} overdue</span>
+              <span className="ml-2 text-red-400">
+                {overdueTasks.length} overdue
+              </span>
             )}
-            <span className="ml-2">{scheduleEntries.length} scheduled classes</span>
+            <span className="ml-2">
+              {scheduleEntries.length} scheduled classes
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -635,7 +866,7 @@ export function CalendarView({
                 "min-h-8 flex-1 rounded-[6px] px-3 text-caption transition-colors lg:flex-none",
                 viewMode === option.value
                   ? "bg-surface-4 text-ink"
-                  : "text-ink-subtle hover:text-ink"
+                  : "text-ink-subtle hover:text-ink",
               )}
             >
               {option.label}
@@ -648,13 +879,16 @@ export function CalendarView({
             <button
               key={option.key}
               onClick={() =>
-                setLayers((prev) => ({ ...prev, [option.key]: !prev[option.key] }))
+                setLayers((prev) => ({
+                  ...prev,
+                  [option.key]: !prev[option.key],
+                }))
               }
               className={cn(
                 "min-h-8 rounded-md border px-2.5 text-caption transition-colors",
                 layers[option.key]
                   ? "border-primary/40 bg-primary/10 text-ink"
-                  : "border-hairline bg-surface-2 text-ink-tertiary hover:text-ink-subtle"
+                  : "border-hairline bg-surface-2 text-ink-tertiary hover:text-ink-subtle",
               )}
             >
               {option.label}
@@ -744,6 +978,7 @@ export function CalendarView({
           layers={layers}
           subjects={subjects}
           onToggleTask={toggleTask}
+          onEditTask={setEditingTask}
           onDeleteTask={deleteTask}
         />
       </div>
@@ -752,8 +987,20 @@ export function CalendarView({
         {showAddTask && (
           <AddTaskModal
             defaultDate={selectedDate}
+            subjects={subjects}
             onAdd={addTask}
             onClose={() => setShowAddTask(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingTask && (
+          <EditTaskModal
+            task={editingTask}
+            subjects={subjects}
+            onSave={(task) => updateTask(editingTask.id, task)}
+            onClose={() => setEditingTask(null)}
           />
         )}
       </AnimatePresence>
@@ -765,6 +1012,7 @@ export function CalendarView({
             subjects={subjects}
             onAdd={addScheduleEntry}
             onDelete={deleteScheduleEntry}
+            onImport={importScheduleFile}
             onClose={() => setShowScheduleSetup(false)}
           />
         )}
@@ -796,7 +1044,10 @@ function MonthLayerView({
     <div>
       <div className="grid grid-cols-7 border-b border-hairline pb-1">
         {WEEKDAYS.map((day) => (
-          <div key={day.value} className="px-1 py-1 text-center text-caption text-ink-tertiary">
+          <div
+            key={day.value}
+            className="px-1 py-1 text-center text-caption text-ink-tertiary"
+          >
             {day.short}
           </div>
         ))}
@@ -829,14 +1080,14 @@ function MonthLayerView({
                   "min-h-[86px] rounded-md border border-transparent p-2 text-left transition-colors",
                   isSelected && "border-primary/70 bg-primary/5",
                   !isSelected && "hover:bg-surface-2/70",
-                  !cell.inMonth && "opacity-40"
+                  !cell.inMonth && "opacity-40",
                 )}
               >
                 <div className="flex items-center justify-between">
                   <span
                     className={cn(
                       "text-caption",
-                      isToday ? "font-medium text-primary" : "text-ink-subtle"
+                      isToday ? "font-medium text-primary" : "text-ink-subtle",
                     )}
                   >
                     {date.getDate()}
@@ -848,7 +1099,7 @@ function MonthLayerView({
                           key={deadline.id}
                           className={cn(
                             "h-1.5 w-1.5 rounded-full",
-                            PRIORITY_CONFIG[deadline.priority].dot
+                            PRIORITY_CONFIG[deadline.priority].dot,
                           )}
                         />
                       ))}
@@ -858,10 +1109,14 @@ function MonthLayerView({
 
                 <div className="mt-2 space-y-1 text-[11px] leading-tight text-ink-tertiary">
                   {layers.classes && classCount > 0 && (
-                    <p>{classCount} class{classCount === 1 ? "" : "es"}</p>
+                    <p>
+                      {classCount} class{classCount === 1 ? "" : "es"}
+                    </p>
                   )}
                   {layers.tasks && taskCount > 0 && (
-                    <p>{taskCount} task{taskCount === 1 ? "" : "s"}</p>
+                    <p>
+                      {taskCount} task{taskCount === 1 ? "" : "s"}
+                    </p>
                   )}
                   {layers.study && studyCount > 0 && (
                     <p className="inline-flex items-center gap-1 text-primary">
@@ -897,7 +1152,7 @@ function WeekLayerView({
   const gridHeight = ((DAY_END_MINUTES - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
   const hours = Array.from(
     { length: DAY_END_MINUTES / 60 - DAY_START_MINUTES / 60 + 1 },
-    (_, index) => DAY_START_MINUTES / 60 + index
+    (_, index) => DAY_START_MINUTES / 60 + index,
   );
 
   return (
@@ -914,13 +1169,18 @@ function WeekLayerView({
                 className={cn(
                   "min-h-[66px] border-l border-hairline px-2 py-2 text-left hover:bg-surface-2/70",
                   selectedDate === day.dateKey && "bg-primary/5",
-                  todayKey === day.dateKey && "text-primary"
+                  todayKey === day.dateKey && "text-primary",
                 )}
               >
                 <p className="text-caption text-ink-tertiary">
-                  {WEEKDAYS.find((item) => item.value === day.date.getDay())?.short}
+                  {
+                    WEEKDAYS.find((item) => item.value === day.date.getDay())
+                      ?.short
+                  }
                 </p>
-                <p className="text-body-sm font-medium text-ink">{formatShortDate(day.date)}</p>
+                <p className="text-body-sm font-medium text-ink">
+                  {formatShortDate(day.date)}
+                </p>
                 <MarkerStrip summary={summary} layers={layers} />
               </button>
             );
@@ -928,12 +1188,17 @@ function WeekLayerView({
         </div>
 
         <div className="grid grid-cols-[56px_repeat(7,minmax(100px,1fr))]">
-          <div className="relative border-r border-hairline" style={{ height: gridHeight }}>
+          <div
+            className="relative border-r border-hairline"
+            style={{ height: gridHeight }}
+          >
             {hours.map((hour) => (
               <div
                 key={hour}
                 className="absolute right-2 text-[10px] text-ink-tertiary"
-                style={{ top: (hour - DAY_START_MINUTES / 60) * HOUR_HEIGHT - 6 }}
+                style={{
+                  top: (hour - DAY_START_MINUTES / 60) * HOUR_HEIGHT - 6,
+                }}
               >
                 {String(hour).padStart(2, "0")}:00
               </div>
@@ -972,7 +1237,7 @@ function DayLayerView({
   const gridHeight = ((DAY_END_MINUTES - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
   const hours = Array.from(
     { length: DAY_END_MINUTES / 60 - DAY_START_MINUTES / 60 + 1 },
-    (_, index) => DAY_START_MINUTES / 60 + index
+    (_, index) => DAY_START_MINUTES / 60 + index,
   );
 
   return (
@@ -980,20 +1245,25 @@ function DayLayerView({
       <div
         className={cn(
           "mb-3 rounded-md border border-hairline bg-surface-2 p-3",
-          todayKey === dateKey && "border-primary/30"
+          todayKey === dateKey && "border-primary/30",
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-caption text-ink-tertiary">Day agenda</p>
-            <p className="text-body-sm font-medium text-ink">{formatLongDate(dateKey)}</p>
+            <p className="text-body-sm font-medium text-ink">
+              {formatLongDate(dateKey)}
+            </p>
           </div>
           <MarkerStrip summary={summary} layers={layers} />
         </div>
       </div>
 
       <div className="grid grid-cols-[56px_minmax(0,1fr)]">
-        <div className="relative border-r border-hairline" style={{ height: gridHeight }}>
+        <div
+          className="relative border-r border-hairline"
+          style={{ height: gridHeight }}
+        >
           {hours.map((hour) => (
             <div
               key={hour}
@@ -1004,7 +1274,12 @@ function DayLayerView({
             </div>
           ))}
         </div>
-        <TimeColumn summary={summary} layers={layers} height={gridHeight} hours={hours} />
+        <TimeColumn
+          summary={summary}
+          layers={layers}
+          height={gridHeight}
+          hours={hours}
+        />
       </div>
     </div>
   );
@@ -1033,31 +1308,28 @@ function TimeColumn({
 
       {layers.classes &&
         summary.classes.map((entry) => (
-          <ClassBlock key={entry.id} entry={entry} compact={summary.classes.length > 4} />
+          <ClassBlock key={entry.id} entry={entry} />
         ))}
 
       {layers.study &&
-        summary.studyBlocks.map((block) => <StudyBlockItem key={block.id} block={block} />)}
+        summary.studyBlocks.map((block) => (
+          <StudyBlockItem key={block.id} block={block} />
+        ))}
     </div>
   );
 }
 
-function ClassBlock({
-  entry,
-  compact,
-}: {
-  entry: SchoolScheduleEntry;
-  compact?: boolean;
-}) {
+function ClassBlock({ entry }: { entry: SchoolScheduleEntry }) {
   const position = eventPosition(entry.start_time, entry.end_time);
-  const style = getSubjectStyle(entry.subject);
+  const subjectName = displaySubjectName(entry.subject);
+  const style = getSubjectStyle(subjectName);
 
   return (
     <div
       className={cn(
         "absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-1.5",
         style.bg,
-        style.border
+        style.border,
       )}
       style={{ top: position.top, height: position.height }}
     >
@@ -1065,14 +1337,8 @@ function ClassBlock({
         <span className={cn("mt-1 h-1.5 w-1.5 rounded-full", style.dot)} />
         <div className="min-w-0">
           <p className="truncate text-[11px] font-medium leading-tight text-ink">
-            {entry.subject}
+            {subjectName}
           </p>
-          {!compact && (
-            <p className="truncate text-[10px] leading-tight text-ink-tertiary">
-              {timeRange(entry.start_time, entry.end_time)}
-              {entry.room ? ` / ${entry.room}` : ""}
-            </p>
-          )}
         </div>
       </div>
     </div>
@@ -1112,7 +1378,11 @@ function MarkerStrip({
   const dots: Array<{ id: string; className: string; label: string }> = [];
 
   if (layers.tasks && summary.tasks.length > 0) {
-    dots.push({ id: "tasks", className: "bg-primary", label: `${summary.tasks.length} tasks` });
+    dots.push({
+      id: "tasks",
+      className: "bg-primary",
+      label: `${summary.tasks.length} tasks`,
+    });
   }
   if (layers.deadlines && summary.deadlines.length > 0) {
     dots.push({
@@ -1130,7 +1400,10 @@ function MarkerStrip({
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5">
       {dots.map((dot) => (
-        <span key={dot.id} className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary">
+        <span
+          key={dot.id}
+          className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary"
+        >
           <span className={cn("h-1.5 w-1.5 rounded-full", dot.className)} />
           {dot.label}
         </span>
@@ -1144,12 +1417,14 @@ function AgendaPanel({
   layers,
   subjects,
   onToggleTask,
+  onEditTask,
   onDeleteTask,
 }: {
   summary: DaySummary;
   layers: Record<LayerKey, boolean>;
   subjects: CalendarSubject[];
   onToggleTask: (id: string, completed: boolean) => void;
+  onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }) {
   const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
@@ -1164,7 +1439,9 @@ function AgendaPanel({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-caption text-ink-tertiary">Selected day</p>
-          <h3 className="text-body-sm font-medium text-ink">{formatLongDate(summary.dateKey)}</h3>
+          <h3 className="text-body-sm font-medium text-ink">
+            {formatLongDate(summary.dateKey)}
+          </h3>
         </div>
         <ListFilter className="h-4 w-4 text-ink-tertiary" />
       </div>
@@ -1178,14 +1455,20 @@ function AgendaPanel({
           {layers.classes && summary.classes.length > 0 && (
             <AgendaSection title="Classes" icon={School}>
               {summary.classes.map((entry) => {
-                const style = getSubjectStyle(entry.subject);
+                const subjectName = displaySubjectName(entry.subject);
+                const style = getSubjectStyle(subjectName);
                 return (
-                  <div key={entry.id} className="rounded-md border border-hairline bg-surface-2 p-3">
+                  <div
+                    key={entry.id}
+                    className="rounded-md border border-hairline bg-surface-2 p-3"
+                  >
                     <div className="flex items-start gap-2">
-                      <span className={cn("mt-1.5 h-2 w-2 rounded-full", style.dot)} />
+                      <span
+                        className={cn("mt-1.5 h-2 w-2 rounded-full", style.dot)}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-body-sm font-medium text-ink">
-                          {entry.subject}
+                          {subjectName}
                         </p>
                         <p className="mt-0.5 text-caption text-ink-tertiary">
                           {timeRange(entry.start_time, entry.end_time)}
@@ -1211,9 +1494,12 @@ function AgendaPanel({
                   key={block.id}
                   className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3"
                 >
-                  <p className="text-body-sm font-medium text-ink">{block.title}</p>
+                  <p className="text-body-sm font-medium text-ink">
+                    {block.title}
+                  </p>
                   <p className="mt-0.5 text-caption text-ink-tertiary">
-                    {timeRange(block.start_time, block.end_time)} / {block.sourceTitle}
+                    {timeRange(block.start_time, block.end_time)} /{" "}
+                    {block.sourceTitle}
                   </p>
                 </div>
               ))}
@@ -1228,6 +1514,7 @@ function AgendaPanel({
                   task={task}
                   subject={subjectById.get(task.subject_id ?? "")}
                   onToggle={onToggleTask}
+                  onEdit={onEditTask}
                   onDelete={onDeleteTask}
                 />
               ))}
@@ -1244,7 +1531,7 @@ function AgendaPanel({
                   <span
                     className={cn(
                       "mt-1.5 h-2 w-2 rounded-full",
-                      PRIORITY_CONFIG[deadline.priority].dot
+                      PRIORITY_CONFIG[deadline.priority].dot,
                     )}
                   />
                   <div className="min-w-0 flex-1">
@@ -1253,8 +1540,9 @@ function AgendaPanel({
                     </p>
                     <p className="mt-0.5 text-caption text-ink-tertiary">
                       {deadline.type}
-                      {deadline.subject_id && subjectById.get(deadline.subject_id)
-                        ? ` / ${subjectById.get(deadline.subject_id)!.subject_name}`
+                      {deadline.subject_id &&
+                      subjectById.get(deadline.subject_id)
+                        ? ` / ${displaySubjectName(subjectById.get(deadline.subject_id)!.subject_name)}`
                         : ""}
                     </p>
                   </div>
@@ -1292,29 +1580,36 @@ function TaskRow({
   task,
   subject,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   task: Task;
   subject?: CalendarSubject;
   onToggle: (id: string, completed: boolean) => void;
+  onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
 }) {
   const config = PRIORITY_CONFIG[task.priority];
+  const sourceLabel = task.source_title ?? task.source_url;
 
   return (
-    <div className="group flex items-center gap-2 rounded-md border border-hairline bg-surface-2 p-2">
+    <div className="group flex items-start gap-2 rounded-md border border-hairline bg-surface-2 p-2">
       <button
         onClick={() => onToggle(task.id, !task.completed)}
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
-          task.completed ? "bg-primary/10" : "hover:bg-surface-3"
+          task.completed ? "bg-primary/10" : "hover:bg-surface-3",
         )}
-        aria-label={task.completed ? "Mark task incomplete" : "Mark task complete"}
+        aria-label={
+          task.completed ? "Mark task incomplete" : "Mark task complete"
+        }
       >
         <motion.div
           className={cn(
             "flex h-4 w-4 items-center justify-center rounded border transition-colors",
-            task.completed ? "border-primary bg-primary" : "border-hairline-strong"
+            task.completed
+              ? "border-primary bg-primary"
+              : "border-hairline-strong",
           )}
           animate={task.completed ? { scale: [1, 1.12, 1] } : {}}
           transition={{ duration: 0.18 }}
@@ -1323,23 +1618,51 @@ function TaskRow({
         </motion.div>
       </button>
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate text-body-sm",
-            task.completed ? "text-ink-tertiary line-through" : "text-ink"
-          )}
+        <button
+          type="button"
+          onClick={() => onEdit(task)}
+          className="block w-full text-left"
         >
-          {task.title}
-        </p>
+          <p
+            className={cn(
+              "truncate text-body-sm",
+              task.completed ? "text-ink-tertiary line-through" : "text-ink",
+            )}
+          >
+            {task.title}
+          </p>
+        </button>
         <p className="text-caption text-ink-tertiary">
-          {task.due_time ? task.due_time : "Due today"}
-          {subject ? ` / ${subject.subject_name}` : ""}
+          {task.due_time
+            ? task.due_time
+            : task.due_date
+              ? "Due today"
+              : "No due time"}
+          {subject ? ` / ${displaySubjectName(subject.subject_name)}` : ""}
         </p>
+        {task.description && (
+          <p className="mt-1 line-clamp-2 text-caption text-ink-subtle">
+            {task.description}
+          </p>
+        )}
+        {sourceLabel && (
+          <p className="mt-1 flex items-center gap-1 truncate text-caption text-ink-tertiary">
+            <Link2 className="h-3 w-3 shrink-0" />
+            {sourceLabel}
+          </p>
+        )}
       </div>
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", config.dot)} />
       <button
+        onClick={() => onEdit(task)}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-tertiary opacity-0 transition-all hover:bg-surface-3 hover:text-ink group-hover:opacity-100"
+        aria-label="Edit task"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+      <button
         onClick={() => onDelete(task.id)}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-tertiary opacity-0 transition-all hover:bg-surface-3 hover:text-red-400 group-hover:opacity-100"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-tertiary opacity-0 transition-all hover:bg-surface-3 hover:text-red-400 group-hover:opacity-100"
         aria-label="Delete task"
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -1350,22 +1673,105 @@ function TaskRow({
 
 function AddTaskModal({
   defaultDate,
+  subjects,
   onAdd,
   onClose,
 }: {
   defaultDate: string;
-  onAdd: (title: string, dueDate: string, priority: string) => void;
+  subjects: CalendarSubject[];
+  onAdd: (task: TaskInput) => MutationResult;
   onClose: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState(defaultDate);
-  const [priority, setPriority] = useState<keyof typeof PRIORITY_CONFIG>("medium");
+  return (
+    <TaskFormModal
+      title="New Task"
+      defaultDate={defaultDate}
+      subjects={subjects}
+      submitLabel="Create Task"
+      onSubmit={onAdd}
+      onClose={onClose}
+    />
+  );
+}
 
-  const handleSubmit = (event: FormEvent) => {
+function EditTaskModal({
+  task,
+  subjects,
+  onSave,
+  onClose,
+}: {
+  task: Task;
+  subjects: CalendarSubject[];
+  onSave: (task: TaskInput) => MutationResult;
+  onClose: () => void;
+}) {
+  return (
+    <TaskFormModal
+      title="Edit Task"
+      task={task}
+      defaultDate={task.due_date ?? formatDateKey(new Date())}
+      subjects={subjects}
+      submitLabel="Save Task"
+      onSubmit={onSave}
+      onClose={onClose}
+    />
+  );
+}
+
+function TaskFormModal({
+  title: modalTitle,
+  task,
+  defaultDate,
+  subjects,
+  submitLabel,
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  task?: Task;
+  defaultDate: string;
+  subjects: CalendarSubject[];
+  submitLabel: string;
+  onSubmit: (task: TaskInput) => MutationResult;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [description, setDescription] = useState(task?.description ?? "");
+  const [dueDate, setDueDate] = useState(task?.due_date ?? defaultDate);
+  const [dueTime, setDueTime] = useState(task?.due_time ?? "");
+  const [subjectId, setSubjectId] = useState(task?.subject_id ?? "");
+  const [sourceTitle, setSourceTitle] = useState(task?.source_title ?? "");
+  const [sourceUrl, setSourceUrl] = useState(task?.source_url ?? "");
+  const [completed, setCompleted] = useState(task?.completed ?? false);
+  const [priority, setPriority] = useState<keyof typeof PRIORITY_CONFIG>(
+    task?.priority ?? "medium",
+  );
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim()) return;
-    onAdd(title.trim(), dueDate, priority);
-    setTitle("");
+    setPending(true);
+    setError(null);
+
+    const result = await onSubmit({
+      title: title.trim(),
+      description: description.trim() || null,
+      due_date: dueDate || null,
+      due_time: dueTime || null,
+      priority,
+      subject_id: subjectId || null,
+      source_title: sourceTitle.trim() || null,
+      source_url: sourceUrl.trim() || null,
+      completed,
+    });
+
+    setPending(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
   };
 
   return (
@@ -1377,15 +1783,15 @@ function AddTaskModal({
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.18 }}
-          className="pointer-events-auto mx-4 w-full max-w-md rounded-lg border border-hairline bg-surface-1 p-6"
+          className="pointer-events-auto max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-hairline bg-surface-1 p-6"
         >
-          <ModalHeader title="New Task" onClose={onClose} />
+          <ModalHeader title={modalTitle} onClose={onClose} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <FieldLabel label="Title">
@@ -1395,48 +1801,121 @@ function AddTaskModal({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Finish Chemistry IA draft"
                 className="min-h-[44px] w-full rounded-md border border-hairline bg-surface-2 px-3 py-2.5 text-body-sm text-ink placeholder:text-ink-tertiary focus:border-hairline-strong focus:outline-2 focus:outline-primary/50"
-                autoFocus
+                autoFocus={!task}
               />
             </FieldLabel>
 
-            <FieldLabel label="Due date">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-tertiary" />
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(event) => setDueDate(event.target.value)}
-                  className="min-h-[44px] w-full rounded-md border border-hairline bg-surface-2 py-2.5 pl-9 pr-3 text-body-sm text-ink focus:border-hairline-strong focus:outline-2 focus:outline-primary/50"
-                />
-              </div>
+            <FieldLabel label="What needs to be done">
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="List the concrete work, criteria, or next step."
+                rows={4}
+                className="w-full resize-y rounded-md border border-hairline bg-surface-2 px-3 py-2.5 text-body-sm text-ink placeholder:text-ink-tertiary focus:border-hairline-strong focus:outline-2 focus:outline-primary/50"
+              />
             </FieldLabel>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FieldLabel label="Due date">
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-tertiary" />
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(event) => setDueDate(event.target.value)}
+                    className="min-h-[44px] w-full rounded-md border border-hairline bg-surface-2 py-2.5 pl-9 pr-3 text-body-sm text-ink focus:border-hairline-strong focus:outline-2 focus:outline-primary/50"
+                  />
+                </div>
+              </FieldLabel>
+
+              <FieldLabel label="Due time optional">
+                <TimeInput value={dueTime} onChange={setDueTime} icon={Clock} />
+              </FieldLabel>
+            </div>
+
+            <FieldLabel label="Subject optional">
+              <select
+                value={subjectId}
+                onChange={(event) => setSubjectId(event.target.value)}
+                className="min-h-[44px] w-full rounded-md border border-hairline bg-surface-2 px-3 py-2.5 text-body-sm text-ink focus:border-hairline-strong focus:outline-2 focus:outline-primary/50"
+              >
+                <option value="">No subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {displaySubjectName(subject.subject_name)}
+                    {subject.level ? ` ${subject.level}` : ""}
+                  </option>
+                ))}
+              </select>
+            </FieldLabel>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FieldLabel label="Source optional">
+                <TextInput
+                  value={sourceTitle}
+                  onChange={setSourceTitle}
+                  icon={FileText}
+                  placeholder="Syllabus page, note, or document"
+                />
+              </FieldLabel>
+              <FieldLabel label="Source link optional">
+                <TextInput
+                  value={sourceUrl}
+                  onChange={setSourceUrl}
+                  icon={Link2}
+                  placeholder="https:// or local reference"
+                />
+              </FieldLabel>
+            </div>
 
             <FieldLabel label="Priority">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(Object.keys(PRIORITY_CONFIG) as Array<keyof typeof PRIORITY_CONFIG>).map(
-                  (option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setPriority(option)}
-                      className={cn(
-                        "flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 text-caption transition-colors",
-                        priority === option
-                          ? "border-primary bg-primary/10 text-ink"
-                          : "border-hairline text-ink-subtle hover:border-hairline-strong"
-                      )}
-                    >
-                      <Flag className={cn("h-3 w-3", PRIORITY_CONFIG[option].text)} />
-                      {PRIORITY_CONFIG[option].label}
-                    </button>
-                  )
-                )}
+                {(
+                  Object.keys(PRIORITY_CONFIG) as Array<
+                    keyof typeof PRIORITY_CONFIG
+                  >
+                ).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setPriority(option)}
+                    className={cn(
+                      "flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-2 text-caption transition-colors",
+                      priority === option
+                        ? "border-primary bg-primary/10 text-ink"
+                        : "border-hairline text-ink-subtle hover:border-hairline-strong",
+                    )}
+                  >
+                    <Flag
+                      className={cn("h-3 w-3", PRIORITY_CONFIG[option].text)}
+                    />
+                    {PRIORITY_CONFIG[option].label}
+                  </button>
+                ))}
               </div>
             </FieldLabel>
 
+            {task && (
+              <label className="flex items-center gap-2 rounded-md border border-hairline bg-surface-2 px-3 py-2 text-body-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={completed}
+                  onChange={(event) => setCompleted(event.target.checked)}
+                  className="h-4 w-4 rounded border-hairline bg-surface-1 accent-primary"
+                />
+                Completed
+              </label>
+            )}
+
+            {error && (
+              <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-caption text-red-400">
+                {error}
+              </p>
+            )}
+
             <ModalActions
-              submitLabel="Create Task"
-              submitDisabled={!title.trim()}
+              submitLabel={pending ? "Saving..." : submitLabel}
+              submitDisabled={pending || !title.trim()}
               onClose={onClose}
             />
           </form>
@@ -1451,35 +1930,50 @@ function ScheduleSetupModal({
   subjects,
   onAdd,
   onDelete,
+  onImport,
   onClose,
 }: {
   entries: SchoolScheduleEntry[];
   subjects: CalendarSubject[];
-  onAdd: (entry: ScheduleEntryInput) => Promise<{ ok: boolean; error: string | null }>;
+  onAdd: (
+    entry: ScheduleEntryInput,
+  ) => Promise<{ ok: boolean; error: string | null }>;
   onDelete: (id: string) => Promise<{ ok: boolean; error: string | null }>;
+  onImport: (file: File, replace: boolean) => Promise<ScheduleImportResult>;
   onClose: () => void;
 }) {
   const [weekday, setWeekday] = useState(1);
-  const [subject, setSubject] = useState(subjects[0]?.subject_name ?? "");
+  const [subject, setSubject] = useState(
+    displaySubjectName(subjects[0]?.subject_name),
+  );
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("09:50");
   const [room, setRoom] = useState("");
   const [teacher, setTeacher] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [replaceSchedule, setReplaceSchedule] = useState(false);
+  const [importPending, setImportPending] = useState(false);
+  const [importResult, setImportResult] = useState<ScheduleImportResult | null>(
+    null,
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
     const matchedSubject = subjects.find(
-      (item) => item.subject_name.toLowerCase() === subject.trim().toLowerCase()
+      (item) =>
+        item.subject_name.toLowerCase() === subject.trim().toLowerCase() ||
+        displaySubjectName(item.subject_name).toLowerCase() ===
+          subject.trim().toLowerCase(),
     );
 
     setPending(true);
     const result = await onAdd({
       weekday,
-      subject: subject.trim(),
+      subject: displaySubjectName(subject.trim()),
       subject_id: matchedSubject?.id ?? null,
       start_time: startTime,
       end_time: endTime,
@@ -1503,6 +1997,21 @@ function ScheduleSetupModal({
     if (!result.ok) setError(result.error);
   };
 
+  const handleImport = async () => {
+    if (!importFile) return;
+    setError(null);
+    setImportResult(null);
+    setImportPending(true);
+    const result = await onImport(importFile, replaceSchedule);
+    setImportPending(false);
+    setImportResult(result);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setImportFile(null);
+  };
+
   return (
     <>
       <motion.div
@@ -1522,6 +2031,73 @@ function ScheduleSetupModal({
         >
           <div className="p-6">
             <ModalHeader title="Import Schedule" onClose={onClose} />
+            <div className="mb-5 rounded-md border border-hairline bg-surface-2 p-3">
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h4 className="text-body-sm font-medium text-ink">
+                  AI spreadsheet import
+                </h4>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                  onChange={(event) =>
+                    setImportFile(event.target.files?.[0] ?? null)
+                  }
+                  className="w-full rounded-md border border-hairline bg-surface-1 px-3 py-2 text-caption text-ink file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-caption file:text-on-primary"
+                />
+                <label className="flex items-center gap-2 text-caption text-ink-subtle">
+                  <input
+                    type="checkbox"
+                    checked={replaceSchedule}
+                    onChange={(event) =>
+                      setReplaceSchedule(event.target.checked)
+                    }
+                    className="h-4 w-4 rounded border-hairline bg-surface-1 accent-primary"
+                  />
+                  Replace saved classes before import
+                </label>
+                <button
+                  type="button"
+                  disabled={!importFile || importPending}
+                  onClick={handleImport}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-md bg-primary px-3 py-2 text-button text-on-primary hover:bg-primary-hover disabled:opacity-50"
+                >
+                  {importPending ? (
+                    <Sparkles className="h-4 w-4" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {importPending ? "Analyzing..." : "Analyze & Import"}
+                </button>
+                {importResult?.ok && (
+                  <p className="text-caption text-ink-subtle">
+                    Imported {importResult.imported} classes
+                    {importResult.skipped > 0
+                      ? ` / ${importResult.skipped} duplicates skipped`
+                      : ""}
+                    {importResult.processor === "ai" && importResult.model
+                      ? ` / cleaned with ${importResult.model}`
+                      : importResult.processor === "deterministic"
+                        ? " / parser fallback"
+                        : ""}
+                  </p>
+                )}
+                {importResult?.issues && importResult.issues.length > 0 && (
+                  <div className="space-y-1 rounded-md border border-hairline bg-surface-1 p-2">
+                    {importResult.issues.slice(0, 3).map((issue) => (
+                      <p
+                        key={`${issue.row}-${issue.message}`}
+                        className="text-caption text-ink-tertiary"
+                      >
+                        Row {issue.row}: {issue.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FieldLabel label="Weekday">
@@ -1548,7 +2124,10 @@ function ScheduleSetupModal({
                   />
                   <datalist id="schedule-subjects">
                     {subjects.map((item) => (
-                      <option key={item.id} value={item.subject_name} />
+                      <option
+                        key={item.id}
+                        value={displaySubjectName(item.subject_name)}
+                      />
                     ))}
                   </datalist>
                 </FieldLabel>
@@ -1556,16 +2135,29 @@ function ScheduleSetupModal({
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FieldLabel label="Start time">
-                  <TimeInput value={startTime} onChange={setStartTime} icon={Clock} />
+                  <TimeInput
+                    value={startTime}
+                    onChange={setStartTime}
+                    icon={Clock}
+                  />
                 </FieldLabel>
                 <FieldLabel label="End time">
-                  <TimeInput value={endTime} onChange={setEndTime} icon={Clock} />
+                  <TimeInput
+                    value={endTime}
+                    onChange={setEndTime}
+                    icon={Clock}
+                  />
                 </FieldLabel>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FieldLabel label="Room optional">
-                  <TextInput value={room} onChange={setRoom} icon={MapPin} placeholder="B204" />
+                  <TextInput
+                    value={room}
+                    onChange={setRoom}
+                    icon={MapPin}
+                    placeholder="B204"
+                  />
                 </FieldLabel>
                 <FieldLabel label="Teacher optional">
                   <TextInput
@@ -1594,7 +2186,9 @@ function ScheduleSetupModal({
           <div className="max-h-[88vh] overflow-y-auto border-t border-hairline bg-surface-2 p-4 lg:border-l lg:border-t-0">
             <div className="mb-3 flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-ink-tertiary" />
-              <h3 className="text-body-sm font-medium text-ink">Saved Classes</h3>
+              <h3 className="text-body-sm font-medium text-ink">
+                Saved Classes
+              </h3>
             </div>
             {entries.length === 0 ? (
               <p className="rounded-md border border-dashed border-hairline p-4 text-center text-caption text-ink-subtle">
@@ -1603,21 +2197,33 @@ function ScheduleSetupModal({
             ) : (
               <div className="space-y-2">
                 {entries.map((entry) => {
-                  const style = getSubjectStyle(entry.subject);
+                  const subjectName = displaySubjectName(entry.subject);
+                  const style = getSubjectStyle(subjectName);
                   return (
-                    <div key={entry.id} className="rounded-md border border-hairline bg-surface-1 p-3">
+                    <div
+                      key={entry.id}
+                      className="rounded-md border border-hairline bg-surface-1 p-3"
+                    >
                       <div className="flex items-start gap-2">
-                        <span className={cn("mt-1.5 h-2 w-2 rounded-full", style.dot)} />
+                        <span
+                          className={cn(
+                            "mt-1.5 h-2 w-2 rounded-full",
+                            style.dot,
+                          )}
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-body-sm font-medium text-ink">
-                            {entry.subject}
+                            {subjectName}
                           </p>
                           <p className="text-caption text-ink-tertiary">
-                            {getWeekdayLabel(entry.weekday)} / {timeRange(entry.start_time, entry.end_time)}
+                            {getWeekdayLabel(entry.weekday)} /{" "}
+                            {timeRange(entry.start_time, entry.end_time)}
                           </p>
                           {(entry.room || entry.teacher) && (
                             <p className="truncate text-caption text-ink-tertiary">
-                              {[entry.room, entry.teacher].filter(Boolean).join(" / ")}
+                              {[entry.room, entry.teacher]
+                                .filter(Boolean)
+                                .join(" / ")}
                             </p>
                           )}
                         </div>
@@ -1642,7 +2248,13 @@ function ScheduleSetupModal({
   );
 }
 
-function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+function ModalHeader({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose: () => void;
+}) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
       <h3 className="text-card-title text-ink">{title}</h3>
