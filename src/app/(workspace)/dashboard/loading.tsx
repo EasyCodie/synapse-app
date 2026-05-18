@@ -17,7 +17,7 @@ export default function DashboardLoading() {
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-lg border border-hairline bg-canvas px-4 py-3 space-y-2">
+          <div key={i} className="rounded-lg border border-hairline bg-surface-1 px-4 py-3 space-y-2">
             <div className="h-3 w-16 bg-surface-2 rounded-sm" />
             <div className="h-4 w-8 bg-surface-2 rounded-sm" />
             <div className="h-2.5 w-14 bg-surface-2 rounded-sm" />
@@ -28,7 +28,7 @@ export default function DashboardLoading() {
       {/* Two-column panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {[...Array(2)].map((_, i) => (
-          <div key={i} className="rounded-lg border border-hairline bg-canvas">
+          <div key={i} className="rounded-lg border border-hairline bg-surface-1">
             <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
               <div className="h-3.5 w-24 bg-surface-2 rounded-sm" />
               <div className="h-3 w-14 bg-surface-2 rounded-sm" />
@@ -47,7 +47,7 @@ export default function DashboardLoading() {
       </div>
 
       {/* Subjects panel */}
-      <div className="rounded-lg border border-hairline bg-canvas">
+      <div className="rounded-lg border border-hairline bg-surface-1">
         <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
           <div className="h-3.5 w-16 bg-surface-2 rounded-sm" />
           <div className="h-3 w-14 bg-surface-2 rounded-sm" />

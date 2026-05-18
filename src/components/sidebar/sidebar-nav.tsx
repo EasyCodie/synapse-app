@@ -26,28 +26,186 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  accent: {
+    text: string;
+    hoverText: string;
+    bg: string;
+    hoverBg: string;
+    border: string;
+    hoverBorder: string;
+    indicator: string;
+  };
   exact?: boolean;
 }
 
 const NAV_ITEMS_WORKSPACE: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/chat", label: "AI Chat", icon: MessageSquare },
-  { href: "/flashcards", label: "Flashcards", icon: GraduationCap },
-  { href: "/calendar", label: "Calendar & Tasks", icon: CalendarDays },
-  { href: "/roadmap", label: "Roadmap", icon: Route },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    accent: {
+      text: "text-[#f6c453]",
+      hoverText: "group-hover:text-[#f6c453]",
+      bg: "bg-[#f6c453]/10",
+      hoverBg: "hover:bg-[#f6c453]/10",
+      border: "border-[#f6c453]/25",
+      hoverBorder: "hover:border-[#f6c453]/25",
+      indicator: "bg-[#f6c453]",
+    },
+    exact: true,
+  },
+  {
+    href: "/chat",
+    label: "AI Chat",
+    icon: MessageSquare,
+    accent: {
+      text: "text-[#a78bfa]",
+      hoverText: "group-hover:text-[#a78bfa]",
+      bg: "bg-[#a78bfa]/10",
+      hoverBg: "hover:bg-[#a78bfa]/10",
+      border: "border-[#a78bfa]/25",
+      hoverBorder: "hover:border-[#a78bfa]/25",
+      indicator: "bg-[#a78bfa]",
+    },
+  },
+  {
+    href: "/flashcards",
+    label: "Flashcards",
+    icon: GraduationCap,
+    accent: {
+      text: "text-[#34d399]",
+      hoverText: "group-hover:text-[#34d399]",
+      bg: "bg-[#34d399]/10",
+      hoverBg: "hover:bg-[#34d399]/10",
+      border: "border-[#34d399]/25",
+      hoverBorder: "hover:border-[#34d399]/25",
+      indicator: "bg-[#34d399]",
+    },
+  },
+  {
+    href: "/calendar",
+    label: "Calendar & Tasks",
+    icon: CalendarDays,
+    accent: {
+      text: "text-[#38bdf8]",
+      hoverText: "group-hover:text-[#38bdf8]",
+      bg: "bg-[#38bdf8]/10",
+      hoverBg: "hover:bg-[#38bdf8]/10",
+      border: "border-[#38bdf8]/25",
+      hoverBorder: "hover:border-[#38bdf8]/25",
+      indicator: "bg-[#38bdf8]",
+    },
+  },
+  {
+    href: "/roadmap",
+    label: "Roadmap",
+    icon: Route,
+    accent: {
+      text: "text-[#fb923c]",
+      hoverText: "group-hover:text-[#fb923c]",
+      bg: "bg-[#fb923c]/10",
+      hoverBg: "hover:bg-[#fb923c]/10",
+      border: "border-[#fb923c]/25",
+      hoverBorder: "hover:border-[#fb923c]/25",
+      indicator: "bg-[#fb923c]",
+    },
+  },
 ];
 
 const NAV_ITEMS_CURRICULUM: NavItem[] = [
-  { href: "/subjects", label: "Subjects", icon: BookOpen },
-  { href: "/core", label: "The Core", icon: Layers },
-  { href: "/ia-manager", label: "IA Manager", icon: ClipboardList },
-  { href: "/resources", label: "Resource Library", icon: Library },
-  { href: "/search", label: "Search", icon: Search },
+  {
+    href: "/subjects",
+    label: "Subjects",
+    icon: BookOpen,
+    accent: {
+      text: "text-[#60a5fa]",
+      hoverText: "group-hover:text-[#60a5fa]",
+      bg: "bg-[#60a5fa]/10",
+      hoverBg: "hover:bg-[#60a5fa]/10",
+      border: "border-[#60a5fa]/25",
+      hoverBorder: "hover:border-[#60a5fa]/25",
+      indicator: "bg-[#60a5fa]",
+    },
+  },
+  {
+    href: "/core",
+    label: "The Core",
+    icon: Layers,
+    accent: {
+      text: "text-[#c084fc]",
+      hoverText: "group-hover:text-[#c084fc]",
+      bg: "bg-[#c084fc]/10",
+      hoverBg: "hover:bg-[#c084fc]/10",
+      border: "border-[#c084fc]/25",
+      hoverBorder: "hover:border-[#c084fc]/25",
+      indicator: "bg-[#c084fc]",
+    },
+  },
+  {
+    href: "/ia-manager",
+    label: "IA Manager",
+    icon: ClipboardList,
+    accent: {
+      text: "text-[#fb7185]",
+      hoverText: "group-hover:text-[#fb7185]",
+      bg: "bg-[#fb7185]/10",
+      hoverBg: "hover:bg-[#fb7185]/10",
+      border: "border-[#fb7185]/25",
+      hoverBorder: "hover:border-[#fb7185]/25",
+      indicator: "bg-[#fb7185]",
+    },
+  },
+  {
+    href: "/resources",
+    label: "Resource Library",
+    icon: Library,
+    accent: {
+      text: "text-[#2dd4bf]",
+      hoverText: "group-hover:text-[#2dd4bf]",
+      bg: "bg-[#2dd4bf]/10",
+      hoverBg: "hover:bg-[#2dd4bf]/10",
+      border: "border-[#2dd4bf]/25",
+      hoverBorder: "hover:border-[#2dd4bf]/25",
+      indicator: "bg-[#2dd4bf]",
+    },
+  },
+  {
+    href: "/search",
+    label: "Search",
+    icon: Search,
+    accent: {
+      text: "text-[#818cf8]",
+      hoverText: "group-hover:text-[#818cf8]",
+      bg: "bg-[#818cf8]/10",
+      hoverBg: "hover:bg-[#818cf8]/10",
+      border: "border-[#818cf8]/25",
+      hoverBorder: "hover:border-[#818cf8]/25",
+      indicator: "bg-[#818cf8]",
+    },
+  },
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [
-  { href: "/settings", label: "Settings", icon: Settings },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
+    accent: {
+      text: "text-[#94a3b8]",
+      hoverText: "group-hover:text-[#94a3b8]",
+      bg: "bg-[#94a3b8]/10",
+      hoverBg: "hover:bg-[#94a3b8]/10",
+      border: "border-[#94a3b8]/25",
+      hoverBorder: "hover:border-[#94a3b8]/25",
+      indicator: "bg-[#94a3b8]",
+    },
+  },
 ];
+
+const iconHover = {
+  rest: { y: 0, rotate: 0, scale: 1 },
+  hover: { y: -1, rotate: -3, scale: 1.08 },
+};
 
 // Hoisted static element (react-best-practices: rendering-hoist-jsx)
 const collapsedSeparator = <div className="w-5 h-px bg-hairline mx-auto" />;
@@ -77,15 +235,20 @@ export function SidebarNav({
     const Icon = item.icon;
 
     return (
-      <div key={item.href}>
+      <motion.div
+        key={item.href}
+        initial="rest"
+        whileHover="hover"
+        whileTap={{ scale: 0.98 }}
+      >
         <Link
           href={item.href}
           className={cn(
-            "relative flex items-center gap-2.5 rounded-md text-cell transition-colors duration-150 group",
+            "relative flex items-center gap-2.5 rounded-md border text-cell transition-colors duration-150 group",
             collapsed ? "justify-center px-2 min-h-[30px]" : "px-2.5 py-1.5 min-h-[30px]",
             active
-              ? "bg-surface-2/40 text-ink"
-              : "text-ink-tertiary hover:text-ink-subtle hover:bg-surface-2/30"
+              ? cn(item.accent.bg, item.accent.border, "text-ink")
+              : cn("border-transparent text-ink-tertiary hover:text-ink-subtle", item.accent.hoverBg, item.accent.hoverBorder)
           )}
           title={collapsed ? item.label : undefined}
         >
@@ -94,7 +257,10 @@ export function SidebarNav({
             {active && (
               <motion.div
                 layoutId="sidebar-active-indicator"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 rounded-r-full bg-primary"
+                className={cn(
+                  "absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 rounded-r-full",
+                  item.accent.indicator
+                )}
                 initial={{ opacity: 0, scaleY: 0 }}
                 animate={{ opacity: 1, scaleY: 1 }}
                 exit={{ opacity: 0, scaleY: 0 }}
@@ -103,17 +269,23 @@ export function SidebarNav({
             )}
           </AnimatePresence>
 
-          <Icon
-            className={cn(
-              "w-4 h-4 shrink-0 transition-colors duration-150",
-              active ? "text-primary" : "text-ink-tertiary group-hover:text-ink-subtle"
-            )}
-          />
+          <motion.span
+            variants={iconHover}
+            transition={{ type: "spring", stiffness: 420, damping: 24 }}
+            className="flex h-4 w-4 shrink-0 items-center justify-center"
+          >
+            <Icon
+              className={cn(
+                "w-4 h-4 shrink-0 transition-colors duration-150",
+                active ? item.accent.text : cn("text-ink-tertiary", item.accent.hoverText)
+              )}
+            />
+          </motion.span>
           {!collapsed && (
             <span className="flex-1 truncate">{item.label}</span>
           )}
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
@@ -205,35 +377,7 @@ export function SidebarNav({
 
         {/* Settings */}
         <div className="space-y-0.5">
-          {BOTTOM_ITEMS.map((item) => {
-            const active = isActive(item);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative flex items-center gap-2.5 rounded-md text-cell transition-colors duration-150 group",
-                  collapsed ? "justify-center px-2 min-h-[30px]" : "px-2.5 py-1.5 min-h-[30px]",
-                  active
-                    ? "bg-surface-2/40 text-ink"
-                    : "text-ink-tertiary hover:text-ink-subtle hover:bg-surface-2/30"
-                )}
-                title={collapsed ? item.label : undefined}
-              >
-                {active && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 rounded-r-full bg-primary" />
-                )}
-                <Icon
-                  className={cn(
-                    "w-4 h-4 shrink-0 transition-colors duration-150",
-                    active ? "text-primary" : "text-ink-tertiary group-hover:text-ink-subtle"
-                  )}
-                />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
+          {BOTTOM_ITEMS.map(renderNavItem)}
         </div>
 
         {/* User profile section */}

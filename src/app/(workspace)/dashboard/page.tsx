@@ -134,21 +134,21 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-1.5">
           <Link
             href="/calendar"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-surface-1 text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Task
           </Link>
           <Link
             href="/chat"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-surface-1 text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5" />
             Ask Synapse
           </Link>
           <Link
             href="/resources"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-canvas text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-hairline bg-surface-1 text-cell text-ink-subtle hover:text-ink hover:border-hairline-strong transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
             Upload
@@ -215,7 +215,7 @@ export default async function DashboardPage() {
       {nextRoadmapItem ? (
         <Link
           href="/roadmap"
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-md border border-hairline bg-canvas hover:bg-surface-1 hover:border-hairline-strong transition-colors"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-md border border-hairline bg-surface-1 hover:bg-surface-2 hover:border-hairline-strong transition-colors"
         >
           <Route className="h-4 w-4 shrink-0 text-primary" />
           <span className="min-w-0 flex-1 truncate text-cell text-ink-subtle">
@@ -233,7 +233,7 @@ export default async function DashboardPage() {
       {/* Main content — two-column panels */}
       <DashboardMotionItem className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Tasks panel */}
-        <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
+        <DashboardMotionPanel className="rounded-lg border border-hairline bg-surface-1">
           <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
             <h2 className="text-cell font-medium text-ink">Tasks</h2>
             <Link
@@ -291,7 +291,7 @@ export default async function DashboardPage() {
         </DashboardMotionPanel>
 
         {/* IAs panel */}
-        <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
+        <DashboardMotionPanel className="rounded-lg border border-hairline bg-surface-1">
           <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
             <h2 className="text-cell font-medium text-ink">
               Internal Assessments
@@ -342,7 +342,7 @@ export default async function DashboardPage() {
       </DashboardMotionItem>
 
       {/* Subjects panel — full width */}
-      <DashboardMotionPanel className="rounded-lg border border-hairline bg-canvas">
+      <DashboardMotionPanel className="rounded-lg border border-hairline bg-surface-1">
         <div className="flex items-center justify-between px-4 py-3 border-b border-hairline">
           <h2 className="text-cell font-medium text-ink">Subjects</h2>
           <Link
@@ -404,7 +404,7 @@ function StatCell({
     <DashboardMotionPanel>
       <Link
         href={href}
-        className="group block rounded-lg border border-hairline bg-canvas px-4 py-3 hover:border-hairline-strong transition-colors"
+        className="group block rounded-lg border border-hairline bg-surface-1 px-4 py-3 hover:border-hairline-strong transition-colors"
       >
         <p className="text-[11px] text-ink-tertiary mb-1">{label}</p>
         <p

@@ -720,7 +720,7 @@ export function ChatInterface() {
         )}
       </AnimatePresence>
 
-      <div className="flex min-w-0 flex-1 flex-col h-full bg-canvas">
+      <div className="flex min-w-0 flex-1 flex-col h-full bg-surface-1">
       {/* Header — only shown when conversation exists */}
       <AnimatePresence>
         {messages.length > 0 && (
