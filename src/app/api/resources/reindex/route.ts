@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
+import { clearRoadmapInsightCache } from "@/lib/roadmap-ai";
 import {
   extractResourceTextFromBuffer,
   getExtractionStatus,
@@ -193,6 +194,7 @@ export async function POST(request: Request) {
     .eq("id", resource_id)
     .eq("user_id", user.id);
 
+  clearRoadmapInsightCache();
   return NextResponse.json({
     success: indexingStatus === "indexed",
     extraction_status: extractionStatus,

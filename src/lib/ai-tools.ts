@@ -1,5 +1,20 @@
 import { generateEmbedding } from "@/lib/embeddings";
 import type { createClient } from "@/lib/local/client";
+import {
+  createRoadmapItem as createRoadmapItemAction,
+  findRoadmapItems as findRoadmapItemsAction,
+  getRoadmapOverview as getRoadmapOverviewAction,
+  linkRoadmapItem as linkRoadmapItemAction,
+  regenerateRoadmap as regenerateRoadmapAction,
+  splitRoadmapItem as splitRoadmapItemAction,
+  toRoadmapRouteError,
+  updateRoadmapItem as updateRoadmapItemAction,
+  type RoadmapCreateArgs,
+  type RoadmapFindArgs,
+  type RoadmapSplitArgs,
+  type RoadmapUpdateArgs,
+} from "@/lib/roadmap-actions";
+import type { RoadmapItem } from "@/lib/roadmap-types";
 
 type LocalClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -693,4 +708,160 @@ export async function listNotes(
   });
 
   return `Found ${notes.length} note${notes.length !== 1 ? "s" : ""}:\n\n${formatted.join("\n")}`;
+}
+
+// Roadmap tools
+
+export async function getRoadmapOverview(
+  local: LocalClient,
+  userId: string,
+  args: Pick<RoadmapFindArgs, "include_hidden" | "limit" | "from" | "to">
+): Promise<string> {
+  try {
+    const overview = await getRoadmapOverviewAction(userId, args, local);
+    const counts = overview.counts;
+    const lines = [
+      `Roadmap overview: ${counts.open} open, ${counts.visible} visible, ${counts.hidden} hidden, ${counts.total} total.`,
+    ];
+
+    if (overview.insight?.summary) {
+      lines.push(`Insight: ${overview.insight.summary}`);
+    }
+    if (overview.next_focus.length > 0) {
+      lines.push(
+        `Next focus:\n${overview.next_focus.map(formatRoadmapItemLine).join("\n")}`
+      );
+    }
+    if (overview.risks.length > 0) {
+      lines.push(`Risks:\n${overview.risks.map((risk) => `- ${risk}`).join("\n")}`);
+    }
+    if (overview.timeline.length > 0) {
+      lines.push(
+        `Timeline slice:\n${overview.timeline.map(formatRoadmapItemLine).join("\n")}`
+      );
+    }
+
+    return lines.join("\n\n");
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap overview failed", cause);
+  }
+}
+
+export async function findRoadmapItems(
+  local: LocalClient,
+  userId: string,
+  args: RoadmapFindArgs
+): Promise<string> {
+  try {
+    const items = await findRoadmapItemsAction(userId, args, local);
+    if (items.length === 0) {
+      return "No matching roadmap items found. Hidden items are excluded unless include_hidden is true.";
+    }
+
+    return `Found ${items.length} roadmap item${items.length === 1 ? "" : "s"}:\n\n${items
+      .map(formatRoadmapItemLine)
+      .join("\n")}`;
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap search failed", cause);
+  }
+}
+
+export async function createRoadmapItem(
+  local: LocalClient,
+  userId: string,
+  args: RoadmapCreateArgs
+): Promise<string> {
+  try {
+    const item = await createRoadmapItemAction(userId, args, local);
+    return `Created roadmap item:\n${formatRoadmapItemLine(item)}`;
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap item create failed", cause);
+  }
+}
+
+export async function updateRoadmapItem(
+  local: LocalClient,
+  userId: string,
+  args: RoadmapUpdateArgs
+): Promise<string> {
+  try {
+    const item = await updateRoadmapItemAction(userId, args, local);
+    return `Updated roadmap item:\n${formatRoadmapItemLine(item)}`;
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap item update failed", cause);
+  }
+}
+
+export async function splitRoadmapItem(
+  local: LocalClient,
+  userId: string,
+  args: RoadmapSplitArgs
+): Promise<string> {
+  try {
+    const children = await splitRoadmapItemAction(userId, args, local);
+    return `Created ${children.length} child checkpoint${children.length === 1 ? "" : "s"}:\n\n${children
+      .map(formatRoadmapItemLine)
+      .join("\n")}`;
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap item split failed", cause);
+  }
+}
+
+export async function linkRoadmapItem(
+  local: LocalClient,
+  userId: string,
+  args: { id?: string; kind?: "task" | "milestone" }
+): Promise<string> {
+  try {
+    const result = await linkRoadmapItemAction(userId, args, local);
+    const action = result.reused ? "Reused linked" : "Created linked";
+    return `${action} ${result.kind} for roadmap item ${result.item.id}: ${result.linked_id}`;
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap item link failed", cause);
+  }
+}
+
+export async function regenerateRoadmap(
+  local: LocalClient,
+  userId: string,
+  args: { use_ai?: boolean; ai?: boolean }
+): Promise<string> {
+  try {
+    const data = await regenerateRoadmapAction(
+      userId,
+      { use_ai: args.use_ai ?? args.ai },
+      local
+    );
+    const nextItems = data.items
+      .filter((item) => item.status !== "done")
+      .slice(0, 8);
+    const lines = [
+      `Regenerated roadmap with ${data.items.length} visible item${data.items.length === 1 ? "" : "s"}.`,
+    ];
+    if (data.insight?.summary) lines.push(`Insight: ${data.insight.summary}`);
+    if (nextItems.length > 0) {
+      lines.push(`Next items:\n${nextItems.map(formatRoadmapItemLine).join("\n")}`);
+    }
+    return lines.join("\n\n");
+  } catch (cause) {
+    return formatRoadmapToolError("Roadmap regenerate failed", cause);
+  }
+}
+
+function formatRoadmapItemLine(item: RoadmapItem) {
+  const dates = [
+    item.start_date ? `start ${item.start_date}` : null,
+    item.due_date ? `due ${item.due_date}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const subject = item.subject_id ? `, subject ${item.subject_id}` : "";
+  const parent = item.parent_id ? `, parent ${item.parent_id}` : "";
+  const hidden = item.hidden ? ", hidden" : "";
+  return `- "${item.title}" (${item.category}, ${item.status}, ${item.priority}${subject}${parent}${hidden}, id: ${item.id}${dates ? `, ${dates}` : ""})`;
+}
+
+function formatRoadmapToolError(prefix: string, cause: unknown) {
+  const error = toRoadmapRouteError(cause);
+  return `${prefix}: ${error.message}`;
 }

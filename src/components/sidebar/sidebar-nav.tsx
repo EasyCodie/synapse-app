@@ -15,6 +15,7 @@ import {
   Settings,
   MessageSquare,
   GraduationCap,
+  Route,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -33,6 +34,7 @@ const NAV_ITEMS_WORKSPACE: NavItem[] = [
   { href: "/chat", label: "AI Chat", icon: MessageSquare },
   { href: "/flashcards", label: "Flashcards", icon: GraduationCap },
   { href: "/calendar", label: "Calendar & Tasks", icon: CalendarDays },
+  { href: "/roadmap", label: "Roadmap", icon: Route },
 ];
 
 const NAV_ITEMS_CURRICULUM: NavItem[] = [

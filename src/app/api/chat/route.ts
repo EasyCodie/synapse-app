@@ -15,6 +15,13 @@ import {
   getIAStatus,
   getSyllabusProgress,
   listNotes,
+  getRoadmapOverview,
+  findRoadmapItems,
+  createRoadmapItem,
+  updateRoadmapItem,
+  splitRoadmapItem,
+  linkRoadmapItem,
+  regenerateRoadmap,
 } from "@/lib/ai-tools";
 import { buildSystemPrompt } from "@/lib/ai-system-prompt";
 import { AI_TOOLS } from "@/lib/ai-tool-schemas";
@@ -481,6 +488,27 @@ export async function POST(request: Request) {
                     break;
                   case "list_notes":
                     result = await listNotes(local, user.id, toolArgs as Parameters<typeof listNotes>[2]);
+                    break;
+                  case "get_roadmap_overview":
+                    result = await getRoadmapOverview(local, user.id, toolArgs as Parameters<typeof getRoadmapOverview>[2]);
+                    break;
+                  case "find_roadmap_items":
+                    result = await findRoadmapItems(local, user.id, toolArgs as Parameters<typeof findRoadmapItems>[2]);
+                    break;
+                  case "create_roadmap_item":
+                    result = await createRoadmapItem(local, user.id, toolArgs as Parameters<typeof createRoadmapItem>[2]);
+                    break;
+                  case "update_roadmap_item":
+                    result = await updateRoadmapItem(local, user.id, toolArgs as Parameters<typeof updateRoadmapItem>[2]);
+                    break;
+                  case "split_roadmap_item":
+                    result = await splitRoadmapItem(local, user.id, toolArgs as Parameters<typeof splitRoadmapItem>[2]);
+                    break;
+                  case "link_roadmap_item":
+                    result = await linkRoadmapItem(local, user.id, toolArgs as Parameters<typeof linkRoadmapItem>[2]);
+                    break;
+                  case "regenerate_roadmap":
+                    result = await regenerateRoadmap(local, user.id, toolArgs as Parameters<typeof regenerateRoadmap>[2]);
                     break;
                   default:
                     result = `Unknown tool: ${toolName}`;

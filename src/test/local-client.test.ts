@@ -68,6 +68,8 @@ describe("local personal data client", () => {
     db.embeddings.push({ id: "embedding-1", user_id: "personal-user" });
     db.integrations.push({ id: "integration-1", user_id: "personal-user" });
     db.curriculum_documents.push({ id: "doc-1", user_id: "personal-user" });
+    db.roadmap_items.push({ id: "roadmap-1", user_id: "personal-user" });
+    db.roadmap_insights.push({ id: "insight-1", user_id: "personal-user" });
     await writeLocalDb(db);
 
     const response = await resetWorkspace();
@@ -78,6 +80,8 @@ describe("local personal data client", () => {
     expect(nextDb.embeddings).toHaveLength(0);
     expect(nextDb.integrations).toHaveLength(0);
     expect(nextDb.curriculum_documents).toHaveLength(0);
+    expect(nextDb.roadmap_items).toHaveLength(0);
+    expect(nextDb.roadmap_insights).toHaveLength(0);
     expect(nextDb.profiles).toHaveLength(1);
     expect(nextDb.profiles[0]?.onboarding_complete).toBe(false);
     expect(nextDb.profiles[0]?.exam_session).toBeNull();

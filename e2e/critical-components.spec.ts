@@ -280,6 +280,7 @@ test.describe("critical Synapse components", () => {
       for (const route of [
         { link: "Dashboard", heading: /Good|Welcome|Hello|Morning|Afternoon|Evening/i },
         { link: "Calendar & Tasks", heading: "Calendar & Tasks" },
+        { link: "Roadmap", heading: "Roadmap" },
         { link: "Resource Library", heading: "Resource Library" },
         { link: "Search", heading: "Search" },
         { link: "AI Chat", heading: "Synapse AI" },

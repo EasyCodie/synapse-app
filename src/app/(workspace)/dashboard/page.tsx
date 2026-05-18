@@ -10,6 +10,7 @@ import {
   Plus,
   Upload,
   Sparkles,
+  Route,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import {
@@ -35,6 +36,13 @@ type DashboardIA = {
   due_date: string | null;
   subject_id: string | null;
 };
+type DashboardRoadmapItem = {
+  id: string;
+  title: string;
+  due_date: string | null;
+  status: string;
+  hidden?: boolean;
+};
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -49,6 +57,7 @@ export default async function DashboardPage() {
     iasResult,
     flashcardsCountResult,
     dueFlashcardsResult,
+    roadmapResult,
   ] = await Promise.all([
     getWorkspaceProfile(user.id),
     local
@@ -79,6 +88,12 @@ export default async function DashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .lte("next_review", now.toISOString()),
+    local
+      .from("roadmap_items")
+      .select("id, title, due_date, status, hidden")
+      .eq("user_id", user.id)
+      .order("due_date", { ascending: true })
+      .limit(10),
   ]);
 
   const subjects = (subjectsResult.data ?? []) as DashboardSubject[];
@@ -87,6 +102,9 @@ export default async function DashboardPage() {
   const openTaskCount = tasksResult.count ?? tasks.length;
   const flashcardCount = flashcardsCountResult.count ?? 0;
   const dueFlashcards = dueFlashcardsResult.count ?? 0;
+  const roadmapItems = ((roadmapResult.data ?? []) as DashboardRoadmapItem[])
+    .filter((item) => item.status !== "done" && !item.hidden);
+  const nextRoadmapItem = roadmapItems[0] ?? null;
 
   // Build subject lookup map (O(1) per lookup)
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
@@ -191,6 +209,24 @@ export default async function DashboardPage() {
           <span className="text-cell text-primary font-medium">
             Review now →
           </span>
+        </Link>
+      ) : null}
+
+      {nextRoadmapItem ? (
+        <Link
+          href="/roadmap"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-md border border-hairline bg-canvas hover:bg-surface-1 hover:border-hairline-strong transition-colors"
+        >
+          <Route className="h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-cell text-ink-subtle">
+            Roadmap next:{" "}
+            <span className="text-ink">{nextRoadmapItem.title}</span>
+          </span>
+          {nextRoadmapItem.due_date ? (
+            <span className="shrink-0 text-[11px] tabular-nums text-ink-tertiary">
+              {getRelativeDate(nextRoadmapItem.due_date)}
+            </span>
+          ) : null}
         </Link>
       ) : null}
 

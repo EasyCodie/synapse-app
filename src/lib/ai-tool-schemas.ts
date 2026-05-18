@@ -1,13 +1,14 @@
 import type OpenAI from "openai";
 
 /**
- * All 14 tool schemas for Synapse AI function calling.
+ * Tool schemas for Synapse AI function calling.
  *
  * Organized by category:
  * - Resources (3): search_resources, summarize_resource, list_resources
  * - Flashcards (2): create_flashcards, delete_flashcards
  * - Tasks (4): create_task, update_task, delete_task, list_tasks
  * - Deadlines (1): get_upcoming_deadlines
+ * - Roadmap (7): overview, find, create, update, split, link, regenerate
  * - Workspace (4): get_my_subjects, get_ia_status, get_syllabus_progress, list_notes
  */
 export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -279,7 +280,282 @@ export const AI_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     },
   },
 
-  // ─── Workspace ──────────────────────────────────────────────────────────────
+  // Roadmap
+  {
+    type: "function",
+    function: {
+      name: "get_roadmap_overview",
+      description:
+        "Inspect the student's Roadmap. Returns counts, current insight, next focus items, risks, and a bounded visible timeline slice.",
+      parameters: {
+        type: "object",
+        properties: {
+          include_hidden: {
+            type: "boolean",
+            description: "Include hidden items. Default false.",
+          },
+          limit: {
+            type: "number",
+            description: "Timeline items to return. Default 12, max 50.",
+          },
+          from: {
+            type: "string",
+            description: "Optional YYYY-MM-DD lower date bound.",
+          },
+          to: {
+            type: "string",
+            description: "Optional YYYY-MM-DD upper date bound.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "find_roadmap_items",
+      description:
+        "Find Roadmap items by text, category, status, subject, date window, priority, and hidden state. Use before updates when the item ID is unknown.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Text to match in title, description, or notes.",
+          },
+          category: {
+            type: "string",
+            enum: [
+              "exam",
+              "mock_exam",
+              "ia",
+              "ee",
+              "tok",
+              "cas",
+              "revision",
+              "custom",
+            ],
+          },
+          status: {
+            type: "string",
+            enum: ["upcoming", "active", "done", "deferred"],
+          },
+          subject_id: {
+            type: "string",
+            description: "Optional subject UUID.",
+          },
+          from: {
+            type: "string",
+            description: "Optional YYYY-MM-DD lower date bound.",
+          },
+          to: {
+            type: "string",
+            description: "Optional YYYY-MM-DD upper date bound.",
+          },
+          priority: {
+            type: "string",
+            enum: ["low", "medium", "high", "urgent"],
+          },
+          include_hidden: {
+            type: "boolean",
+            description: "Include hidden items in results. Default false.",
+          },
+          hidden: {
+            type: "boolean",
+            description:
+              "When true, return only hidden items. When false, return only visible items.",
+          },
+          limit: {
+            type: "number",
+            description: "Max results. Default 20, max 50.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_roadmap_item",
+      description:
+        "Create a custom Roadmap checkpoint. This is reversible by editing, hiding, deferring, or marking done, so no confirmation is needed when the student intent is clear.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          category: {
+            type: "string",
+            enum: [
+              "exam",
+              "mock_exam",
+              "ia",
+              "ee",
+              "tok",
+              "cas",
+              "revision",
+              "custom",
+            ],
+          },
+          status: {
+            type: "string",
+            enum: ["upcoming", "active", "done", "deferred"],
+          },
+          priority: {
+            type: "string",
+            enum: ["low", "medium", "high", "urgent"],
+          },
+          start_date: {
+            type: "string",
+            description: "Optional YYYY-MM-DD start date.",
+          },
+          due_date: {
+            type: "string",
+            description: "Optional YYYY-MM-DD due date.",
+          },
+          subject_id: {
+            type: "string",
+            description: "Optional subject UUID.",
+          },
+          notes: { type: "string" },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_roadmap_item",
+      description:
+        "Edit a Roadmap item, including marking done, deferring, hiding, changing dates, priority, notes, title, or description. Requires the item ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Roadmap item UUID." },
+          title: { type: "string" },
+          description: { type: "string" },
+          start_date: {
+            type: "string",
+            description: "YYYY-MM-DD or null to clear.",
+          },
+          due_date: {
+            type: "string",
+            description: "YYYY-MM-DD or null to clear.",
+          },
+          status: {
+            type: "string",
+            enum: ["upcoming", "active", "done", "deferred"],
+          },
+          priority: {
+            type: "string",
+            enum: ["low", "medium", "high", "urgent"],
+          },
+          notes: { type: "string" },
+          hidden: { type: "boolean" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "split_roadmap_item",
+      description:
+        "Split a large Roadmap item into child checkpoints under parent_id. Use for EE, TOK essay, IA drafts, revision cycles, or other multi-step work.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Parent Roadmap item UUID." },
+          checkpoints: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                description: { type: "string" },
+                category: {
+                  type: "string",
+                  enum: [
+                    "exam",
+                    "mock_exam",
+                    "ia",
+                    "ee",
+                    "tok",
+                    "cas",
+                    "revision",
+                    "custom",
+                  ],
+                },
+                status: {
+                  type: "string",
+                  enum: ["upcoming", "active", "done", "deferred"],
+                },
+                priority: {
+                  type: "string",
+                  enum: ["low", "medium", "high", "urgent"],
+                },
+                start_date: { type: "string" },
+                due_date: { type: "string" },
+                subject_id: { type: "string" },
+                notes: { type: "string" },
+              },
+              required: ["title"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["id", "checkpoints"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_roadmap_item",
+      description:
+        "Create or reuse a linked task or milestone for a Roadmap item. The operation is idempotent.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Roadmap item UUID." },
+          kind: {
+            type: "string",
+            enum: ["task", "milestone"],
+            description: "Link target type.",
+          },
+        },
+        required: ["id", "kind"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "regenerate_roadmap",
+      description:
+        "Regenerate the Roadmap from current workspace structure and refresh insight while preserving manual overrides, done/deferred status, and hidden items.",
+      parameters: {
+        type: "object",
+        properties: {
+          use_ai: {
+            type: "boolean",
+            description: "Use AI insight generation when available. Default true.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+
+  // Workspace
   {
     type: "function",
     function: {

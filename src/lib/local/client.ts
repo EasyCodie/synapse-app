@@ -38,6 +38,8 @@ const TABLES = [
   "integrations",
   "curriculum_documents",
   "flashcards",
+  "roadmap_items",
+  "roadmap_insights",
 ];
 
 function emptyDb(): Db {
@@ -238,6 +240,20 @@ function withDefaults(table: string, row: Row) {
   if (table === "curriculum_documents") {
     stamped.source ??= "google_drive";
     stamped.updated_at ??= stamped.created_at;
+  }
+  if (table === "roadmap_items") {
+    stamped.category ??= "custom";
+    stamped.status ??= "upcoming";
+    stamped.priority ??= "medium";
+    stamped.source_type ??= "custom";
+    stamped.manual_override ??= false;
+    stamped.hidden ??= false;
+    stamped.updated_at ??= stamped.created_at;
+  }
+  if (table === "roadmap_insights") {
+    stamped.next_actions ??= [];
+    stamped.risk_flags ??= [];
+    stamped.generated_at ??= stamped.created_at;
   }
 
   return stamped;

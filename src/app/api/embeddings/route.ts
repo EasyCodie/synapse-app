@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
+import { clearRoadmapInsightCache } from "@/lib/roadmap-ai";
 import { z } from "zod";
 
 const EmbeddingRequestSchema = z.object({
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
         .eq("user_id", user.id);
     }
 
+    clearRoadmapInsightCache();
     return NextResponse.json({ success: true, chunks: embeddingRows.length });
   } catch (err) {
     console.error("Embedding error:", err);
