@@ -29,12 +29,14 @@ export function DeleteResourceButton({ resourceId }: { resourceId: string }) {
 
   return (
     <button
+      type="button"
       onClick={(e) => {
         e.stopPropagation();
         handleDelete();
       }}
       disabled={deleting}
-      className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-3 transition-colors duration-200"
+      className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:bg-surface-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-primary/50"
+      aria-label="Delete resource"
       title="Delete resource"
     >
       {deleting ? (

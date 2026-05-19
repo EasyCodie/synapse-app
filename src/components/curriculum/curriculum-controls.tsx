@@ -512,8 +512,8 @@ export function DriveDocumentPanel({
             </a>
           ) : (
             <p className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-caption text-ink-subtle">
-              Add Google OAuth environment variables to enable document
-              creation.
+              Drive document creation is not set up yet. You can paste a
+              Google Docs URL below.
             </p>
           )}
         </div>
@@ -791,8 +791,29 @@ export function IAManagerBoard({
   const selected = ias.find((ia) => ia.id === selectedId) ?? ias[0] ?? null;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
+    <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <aside className="rounded-lg border border-hairline-strong bg-surface-1 p-5">
+        <div className="flex items-center gap-2">
+          <ClipboardList className="h-4 w-4 text-primary" />
+          <h2 className="text-card-title text-ink">Selected IA</h2>
+        </div>
+        {selected ? (
+          <IAQuickEditor
+            ia={selected}
+            compact
+            documents={documents.filter(
+              (document) => document.owner_id === selected.id,
+            )}
+            driveStatus={driveStatus}
+          />
+        ) : (
+          <p className="mt-3 text-body-sm text-ink-subtle">
+            Select an IA to edit its project details.
+          </p>
+        )}
+      </aside>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {IA_STATUSES.map((status) => {
           const columnIas = ias.filter((ia) => ia.status === status);
           return (
@@ -821,7 +842,7 @@ export function IAManagerBoard({
                       type="button"
                       onClick={() => setSelectedId(ia.id)}
                       className={cn(
-                        "w-full rounded-lg border bg-surface-1 p-4 text-left transition-colors duration-200 hover:border-hairline-strong hover:bg-surface-2",
+                        "w-full rounded-lg border bg-surface-1 p-3 text-left transition-colors duration-200 hover:border-hairline-strong hover:bg-surface-2",
                         selected?.id === ia.id
                           ? "border-primary/60"
                           : "border-hairline",
@@ -856,27 +877,6 @@ export function IAManagerBoard({
           );
         })}
       </div>
-
-      <aside className="rounded-lg border border-hairline bg-surface-1 p-5">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-primary" />
-          <h2 className="text-card-title text-ink">Selected IA</h2>
-        </div>
-        {selected ? (
-          <IAQuickEditor
-            ia={selected}
-            compact
-            documents={documents.filter(
-              (document) => document.owner_id === selected.id,
-            )}
-            driveStatus={driveStatus}
-          />
-        ) : (
-          <p className="mt-3 text-body-sm text-ink-subtle">
-            Select an IA to edit its project details.
-          </p>
-        )}
-      </aside>
     </div>
   );
 }

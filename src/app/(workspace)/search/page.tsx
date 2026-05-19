@@ -276,7 +276,7 @@ function ResultCard({ result }: { result: SearchResult }) {
       {/* Similarity + arrow */}
       <div className="flex items-center gap-2 shrink-0 mt-1">
         <MatchBadge similarity={similarity} />
-        <ArrowRight className="w-3.5 h-3.5 text-ink-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ArrowRight className="w-3.5 h-3.5 text-ink-tertiary transition-colors group-hover:text-ink-subtle" />
       </div>
     </Link>
   );

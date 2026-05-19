@@ -835,15 +835,6 @@ export function CalendarView({
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setShowScheduleSetup(true)}
-            className="inline-flex min-h-9 items-center gap-2 rounded-md border border-hairline bg-surface-1 px-3 py-2 text-button text-ink hover:bg-surface-2"
-          >
-            <School className="h-4 w-4" />
-            Import Schedule
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             onClick={() => {
               if (!selectedDate) setSelectedDate(todayKey);
               setShowAddTask(true);
@@ -874,26 +865,36 @@ export function CalendarView({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          {LAYER_OPTIONS.map((option) => (
-            <button
-              key={option.key}
-              onClick={() =>
-                setLayers((prev) => ({
-                  ...prev,
-                  [option.key]: !prev[option.key],
-                }))
-              }
-              className={cn(
-                "min-h-8 rounded-md border px-2.5 text-caption transition-colors",
-                layers[option.key]
-                  ? "border-primary/40 bg-primary/10 text-ink"
-                  : "border-hairline bg-surface-2 text-ink-tertiary hover:text-ink-subtle",
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1">
+            {LAYER_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                onClick={() =>
+                  setLayers((prev) => ({
+                    ...prev,
+                    [option.key]: !prev[option.key],
+                  }))
+                }
+                className={cn(
+                  "min-h-8 rounded-md border px-2.5 text-caption transition-colors",
+                  layers[option.key]
+                    ? "border-hairline-strong bg-surface-3 text-ink-subtle"
+                    : "border-transparent bg-surface-2/60 text-ink-tertiary hover:text-ink-subtle",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowScheduleSetup(true)}
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-hairline bg-surface-2/60 px-2.5 text-caption text-ink-subtle transition-colors hover:border-hairline-strong hover:text-ink"
+          >
+            <School className="h-3.5 w-3.5" />
+            Schedule
+          </button>
         </div>
       </div>
 
@@ -1655,14 +1656,14 @@ function TaskRow({
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", config.dot)} />
       <button
         onClick={() => onEdit(task)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-tertiary opacity-0 transition-all hover:bg-surface-3 hover:text-ink group-hover:opacity-100"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-hairline bg-surface-2/50 text-ink-tertiary transition-colors hover:border-hairline-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-primary/50"
         aria-label="Edit task"
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
       <button
         onClick={() => onDelete(task.id)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-tertiary opacity-0 transition-all hover:bg-surface-3 hover:text-red-400 group-hover:opacity-100"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-hairline bg-surface-2/50 text-ink-tertiary transition-colors hover:border-hairline-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-primary/50"
         aria-label="Delete task"
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -1780,7 +1781,7 @@ function TaskFormModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]"
+        className="fixed inset-0 z-50 bg-semantic-overlay/60 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2018,7 +2019,7 @@ function ScheduleSetupModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]"
+        className="fixed inset-0 z-50 bg-semantic-overlay/60 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2035,7 +2036,7 @@ function ScheduleSetupModal({
               <div className="mb-3 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <h4 className="text-body-sm font-medium text-ink">
-                  AI spreadsheet import
+                  Analyze schedule import
                 </h4>
               </div>
               <div className="space-y-3">

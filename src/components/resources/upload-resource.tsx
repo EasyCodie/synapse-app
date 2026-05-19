@@ -97,7 +97,7 @@ export function UploadResource({ subjects, driveStatus }: UploadResourceProps) {
     if (!documentUrl) return;
     setUploading(true);
     setError(null);
-    setStatus("Importing Google Doc and preparing AI search...");
+    setStatus("Importing Google Doc and preparing resource search...");
 
     try {
       const res = await fetch("/api/resources/import-google-doc", {
@@ -266,7 +266,8 @@ export function UploadResource({ subjects, driveStatus }: UploadResourceProps) {
             </a>
           ) : (
             <p className="rounded-md border border-hairline bg-surface-1 px-3 py-2 text-caption text-ink-subtle">
-              Add Google OAuth environment variables to import Google Docs.
+              Google Docs import is not connected yet. Upload a file here, or
+              connect Drive from Settings when you are ready.
             </p>
           )}
         </div>

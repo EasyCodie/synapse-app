@@ -7,11 +7,11 @@
 /* ─── Synapse Design Tokens ─────────────────────────────────────────────── */
 :root {
   /* Colors */
-  --canvas: #010102;
-  --surface-1: #0f1011;
-  --surface-2: #141516;
-  --surface-3: #18191a;
-  --surface-4: #191a1b;
+  --canvas: #0f1011;
+  --surface-1: #141516;
+  --surface-2: #18191a;
+  --surface-3: #191a1b;
+  --surface-4: #202123;
   --primary: #5e6ad2;
   --primary-hover: #828fff;
   --primary-focus: #5e69d1;
@@ -24,6 +24,7 @@
   --hairline-strong: #34343a;
   --hairline-tertiary: #3e3e44;
   --semantic-success: #27a644;
+  --semantic-overlay: #010102;
   --brand-secure: #7a7fad;
 
   /* shadcn/ui token overrides — mapped to Synapse tokens */
@@ -96,6 +97,7 @@
   --color-hairline-strong: var(--hairline-strong);
   --color-hairline-tertiary: var(--hairline-tertiary);
   --color-semantic-success: var(--semantic-success);
+  --color-semantic-overlay: var(--semantic-overlay);
   --color-brand-secure: var(--brand-secure);
 
   /* shadcn/ui compatibility */

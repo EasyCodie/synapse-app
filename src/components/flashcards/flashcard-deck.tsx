@@ -241,7 +241,7 @@ export function FlashcardDeck() {
           </div>
           <p className="text-body text-ink-subtle">No flashcards yet</p>
           <p className="text-body-sm text-ink-tertiary mt-1 max-w-sm">
-            Ask the AI to &ldquo;create flashcards&rdquo; from your uploads and they&apos;ll appear here as study sets
+            Ask Advisor to create flashcards from your uploads and they&apos;ll appear here as study sets
           </p>
         </motion.div>
       ) : (
@@ -415,7 +415,7 @@ function CompactCardRow({
   return (
     <div
       onClick={() => setShowAnswer((prev) => !prev)}
-      className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-surface-2/30 transition-colors duration-200"
+      className="group flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors duration-200 hover:bg-surface-2/30 focus-within:bg-surface-2/30"
     >
       {/* Confidence indicator */}
       <div className="flex items-center gap-0.5 pt-1.5 shrink-0">
@@ -457,7 +457,9 @@ function CompactCardRow({
       {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-surface-2 text-ink-tertiary hover:text-red-400 transition-all duration-200 shrink-0"
+        type="button"
+        aria-label="Delete flashcard"
+        className="shrink-0 rounded-md border border-hairline bg-surface-2/60 p-1.5 text-ink-tertiary transition-colors duration-200 hover:border-hairline-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-primary/50"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>

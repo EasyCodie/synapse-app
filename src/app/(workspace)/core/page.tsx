@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { ensureCurriculumScaffold } from "@/lib/curriculum";
 import Link from "next/link";
 import { AnimatedList, AnimatedItem } from "@/components/layout/animated-list";
+import { ArrowRight } from "lucide-react";
 
 export default async function CorePage() {
   const user = await requireUser();
@@ -51,6 +52,12 @@ export default async function CorePage() {
       wordTarget: null,
     },
   ];
+  const currentModule =
+    coreModules.find((mod) => mod.status === "in_progress" || mod.status === "planning") ??
+    coreModules[0];
+  const secondaryModules = coreModules.filter(
+    (mod) => mod.href !== currentModule.href,
+  );
 
   return (
     <div className="space-y-6">
@@ -61,41 +68,80 @@ export default async function CorePage() {
         </p>
       </div>
 
-      <AnimatedList className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {coreModules.map((mod) => (
+      <Link
+        href={currentModule.href}
+        className="group block rounded-lg border border-hairline-strong bg-surface-1 p-5 transition-colors duration-200 hover:bg-surface-2"
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/10">
+              <span className="text-caption font-semibold text-primary">
+                {currentModule.abbr}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-caption text-ink-tertiary">Current focus</p>
+              <h2 className="mt-1 text-card-title text-ink">
+                {currentModule.label}
+              </h2>
+              <p className="mt-1 text-body-sm text-ink-subtle">
+                {currentModule.detail ?? currentModule.description}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {currentModule.status && (
+              <CoreStatusBadge status={currentModule.status} />
+            )}
+            <ArrowRight className="h-4 w-4 text-ink-tertiary transition-colors group-hover:text-ink" />
+          </div>
+        </div>
+        {currentModule.wordCount !== null && currentModule.wordTarget !== null && (
+          <div className="mt-5 max-w-xl">
+            <div className="mb-1 flex justify-between text-caption text-ink-subtle">
+              <span>Word count</span>
+              <span>
+                {currentModule.wordCount} / {currentModule.wordTarget}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{
+                  width: `${Math.min(
+                    (currentModule.wordCount / currentModule.wordTarget) * 100,
+                    100,
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </Link>
+
+      <AnimatedList className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {secondaryModules.map((mod) => (
           <AnimatedItem key={mod.href}>
             <Link
               href={mod.href}
-              className="block bg-surface-1 border border-hairline rounded-lg p-6 hover:border-hairline-strong hover:bg-surface-2 transition-all duration-200 group space-y-3"
+              className="group flex min-h-[96px] items-start justify-between gap-4 rounded-lg border border-hairline bg-surface-1 p-4 transition-colors duration-200 hover:border-hairline-strong hover:bg-surface-2"
             >
-            <div className="flex items-start justify-between">
-              <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
-                <span className="text-caption font-semibold text-primary">{mod.abbr}</span>
-              </div>
-              {mod.status && <CoreStatusBadge status={mod.status} />}
-            </div>
-            <div>
-              <h3 className="text-card-title text-ink">{mod.label}</h3>
-              <p className="text-body-sm text-ink-subtle mt-1">{mod.description}</p>
-              {mod.detail && (
-                <p className="text-caption text-ink-subtle mt-1 truncate">{mod.detail}</p>
-              )}
-            </div>
-            {mod.wordCount !== null && mod.wordTarget !== null && (
-              <div>
-                <div className="flex justify-between text-caption text-ink-subtle mb-1">
-                  <span>Word count</span>
-                  <span>{mod.wordCount} / {mod.wordTarget}</span>
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="rounded-sm bg-surface-3 px-1.5 py-0.5 text-caption font-medium text-ink-subtle">
+                    {mod.abbr}
+                  </span>
+                  {mod.status && <CoreStatusBadge status={mod.status} />}
                 </div>
-                <div className="w-full h-1 bg-surface-3 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${Math.min((mod.wordCount / mod.wordTarget) * 100, 100)}%` }}
-                  />
-                </div>
+                <h3 className="text-body-sm font-medium text-ink">
+                  {mod.label}
+                </h3>
+                <p className="mt-1 truncate text-caption text-ink-subtle">
+                  {mod.detail ?? mod.description}
+                </p>
               </div>
-            )}
-          </Link>
+              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-ink-tertiary transition-colors group-hover:text-ink" />
+            </Link>
           </AnimatedItem>
         ))}
       </AnimatedList>

@@ -16,7 +16,7 @@ export function MobileSidebarToggle({ userEmail, userName }: MobileSidebarToggle
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#070707] border-b border-hairline flex items-center px-4">
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center border-b border-hairline bg-sidebar px-4 md:hidden">
         <button
           onClick={() => setOpen(true)}
           className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors duration-200"
@@ -30,14 +30,14 @@ export function MobileSidebarToggle({ userEmail, userName }: MobileSidebarToggle
       {/* Mobile sidebar overlay — always rendered for CSS transition */}
       <div
         className={cn(
-          "md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300",
+          "fixed inset-0 z-50 bg-semantic-overlay/60 backdrop-blur-[2px] transition-opacity duration-300 md:hidden",
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={() => setOpen(false)}
       />
       <aside
         className={cn(
-          "md:hidden fixed left-0 top-0 bottom-0 z-50 w-64 bg-[#070707] border-r border-hairline flex flex-col transition-transform duration-300 ease-out",
+          "fixed bottom-0 left-0 top-0 z-50 flex w-64 flex-col border-r border-hairline bg-sidebar transition-transform duration-300 ease-out md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >

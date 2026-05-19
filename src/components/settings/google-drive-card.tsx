@@ -10,15 +10,15 @@ const buttonClass =
   "inline-flex min-h-[36px] items-center justify-center gap-2 rounded-md px-3 py-2 text-button transition-colors duration-200 disabled:pointer-events-none disabled:opacity-50";
 
 const googleErrors: Record<string, string> = {
-  callback_failed: "Google Drive connection failed. Check the terminal log for the exact OAuth error.",
-  invalid_grant: "Google rejected the authorization code. Confirm the redirect URI matches exactly, then try again.",
-  invalid_client: "Google rejected the client credentials. Check the client ID and client secret in .env.local.",
-  missing_callback_params: "Google returned an incomplete callback. Start the connection again.",
+  callback_failed: "Drive did not finish connecting. Try again from Settings.",
+  invalid_grant: "That sign-in attempt expired. Reconnect Drive when you are ready.",
+  invalid_client: "Drive could not verify this connection. Check your Google setup, then try again.",
+  missing_callback_params: "Drive returned without the information Synapse needs. Start the connection again.",
   missing_refresh_token:
-    "Google did not return offline access. Revoke Synapse in your Google Account permissions, then connect again.",
-  not_configured: "Google Drive OAuth is not configured in .env.local.",
+    "Drive connected without long-term access. Remove Synapse from your Google Account permissions, then connect again.",
+  not_configured: "Drive document syncing is not set up yet. You can keep using local resources.",
   redirect_uri_mismatch:
-    "Google rejected the redirect URI. Add the exact callback URL to your OAuth client.",
+    "Drive could not return to Synapse. Check the Google connection setup, then reconnect.",
 };
 
 export function GoogleDriveCard({ status }: { status: DriveStatus }) {
@@ -36,11 +36,11 @@ export function GoogleDriveCard({ status }: { status: DriveStatus }) {
   }
 
   const statusText = !status.configured
-    ? "OAuth environment variables missing"
+    ? "Not set up"
     : status.connected
       ? "Connected"
       : status.needsRefresh
-        ? "Connection expired — please reconnect"
+        ? "Connection expired, please reconnect"
         : "Ready to connect";
 
   return (

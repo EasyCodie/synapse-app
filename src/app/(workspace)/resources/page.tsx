@@ -9,19 +9,18 @@ import { ReindexResourceButton } from "@/components/resources/reindex-resource-b
 
 const TYPE_LABELS: Record<string, string> = {
   pdf: "PDF",
-  web_clip: "Web clip",
-  scan: "Scan",
-  image: "Image",
+  docx: "DOCX",
+  pptx: "PPTX",
+  txt: "TXT",
+  md: "MD",
+  web_clip: "Document",
+  scan: "Document",
+  image: "Document",
   other: "Document",
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  pdf: "bg-red-500/10 text-red-400",
-  web_clip: "bg-blue-500/10 text-blue-400",
-  scan: "bg-emerald-500/10 text-emerald-400",
-  image: "bg-purple-500/10 text-purple-400",
-  other: "bg-primary/10 text-primary",
-};
+const DOCUMENT_BADGE_CLASS =
+  "border border-hairline bg-surface-2 text-ink-subtle";
 
 type ResourceItem = {
   id: string;
@@ -90,7 +89,7 @@ export default async function ResourcesPage() {
             {resources.length > 0 && (
               <span className="text-ink-tertiary">
                 {" "}
-                · {indexedCount} indexed for AI search
+                · {indexedCount} indexed for resource search
               </span>
             )}
           </p>
@@ -102,7 +101,7 @@ export default async function ResourcesPage() {
         <EmptyState
           icon={Library}
           title="No resources yet"
-          description="Upload PDFs, documents, and notes to build your resource library. Text is automatically extracted for AI search."
+          description="Upload PDFs, documents, and notes to build your resource library. Text is automatically extracted for search and Advisor context."
         />
       ) : (
         <div className="space-y-2">
@@ -120,11 +119,12 @@ export default async function ResourcesPage() {
               >
                 {/* File type badge */}
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${TYPE_COLORS[resource.type] ?? TYPE_COLORS.other}`}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${DOCUMENT_BADGE_CLASS}`}
                 >
                   <span className="text-caption font-semibold">
-                    {TYPE_LABELS[resource.type]?.slice(0, 3).toUpperCase() ??
-                      "DOC"}
+                    {(TYPE_LABELS[resource.type] ?? "Document")
+                      .slice(0, 3)
+                      .toUpperCase()}
                   </span>
                 </div>
 
@@ -134,7 +134,7 @@ export default async function ResourcesPage() {
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-caption text-ink-tertiary">
-                      {TYPE_LABELS[resource.type] ?? resource.type}
+                      {TYPE_LABELS[resource.type] ?? "Document"}
                     </span>
                     {resource.subject_id && subjectMap[resource.subject_id] && (
                       <>
@@ -195,7 +195,7 @@ export default async function ResourcesPage() {
                 </span>
 
                 {/* Delete — revealed on hover */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="flex shrink-0 items-center gap-1 rounded-md border border-hairline bg-surface-2/50 p-0.5">
                   <ReindexResourceButton resourceId={resource.id} />
                   <DeleteResourceButton resourceId={resource.id} />
                 </div>

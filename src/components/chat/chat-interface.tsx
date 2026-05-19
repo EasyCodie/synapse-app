@@ -735,7 +735,7 @@ export function ChatInterface() {
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
               </div>
               <span className="text-body-sm text-ink font-medium">
-                Synapse AI
+                Advisor
               </span>
               <span className="text-caption text-ink-tertiary">
                 · {messages.filter((m) => m.role === "user").length} message{messages.filter((m) => m.role === "user").length !== 1 ? "s" : ""}
@@ -781,7 +781,7 @@ export function ChatInterface() {
               transition={{ delay: 0.1, duration: 0.25 }}
               className="text-card-title text-ink mb-2"
             >
-              Synapse AI
+              Advisor
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 8 }}
@@ -789,8 +789,7 @@ export function ChatInterface() {
               transition={{ delay: 0.15, duration: 0.25 }}
               className="text-body-sm text-ink-subtle max-w-md mb-8"
             >
-              Your AI study assistant. Ask about your resources, create
-              flashcards, manage tasks, or get help understanding course material.
+              Ask from your resources, create flashcards, manage tasks, or get help understanding course material.
             </motion.p>
 
             {/* Conversation starters */}
@@ -1229,13 +1228,13 @@ function ChatRecentsSidebar({
 
                   {/* Menu toggle */}
                   <motion.button
+                    type="button"
                     onClick={() => onToggleMenu(conversation.id)}
                     initial={false}
-                    animate={{ opacity: active || menuOpen ? 1 : 0 }}
                     whileHover={{ scale: 1.1 }}
                     className={cn(
-                      "absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-ink-tertiary transition-colors duration-200 hover:bg-surface-3 hover:text-ink-subtle",
-                      !active && !menuOpen && "group-hover:opacity-100"
+                      "absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-ink-tertiary opacity-0 transition-all duration-200 hover:bg-surface-3 hover:text-ink-subtle focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-primary/50 group-focus-within:opacity-100 group-hover:opacity-100",
+                      (active || menuOpen) && "opacity-100"
                     )}
                     aria-label={`Open actions for ${conversation.title}`}
                   >
@@ -1402,7 +1401,7 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
             ) : (
               <span className="text-[10px] text-ink-tertiary">attached</span>
             )}
-            <ExternalLink className="w-3 h-3 text-ink-tertiary opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            <ExternalLink className="w-3 h-3 text-ink-tertiary transition-colors duration-200 group-hover:text-ink-subtle" />
           </a>
         );
         })}

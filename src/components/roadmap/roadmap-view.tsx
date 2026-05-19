@@ -7,10 +7,10 @@ import {
   Flag,
   Link2,
   Milestone,
+  MoreHorizontal,
   Pencil,
   RefreshCw,
   Save,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -95,6 +95,7 @@ export function RoadmapView({
   );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSecondaryActions, setShowSecondaryActions] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const subjectById = useMemo(
@@ -137,7 +138,7 @@ export function RoadmapView({
         setInsight(body.insight ?? null);
         setSelectedId(nextSelected?.id ?? null);
         setDraft(createDraft(nextSelected));
-        setMessage(body.ai ? "AI plan refreshed" : "Roadmap refreshed");
+        setMessage(body.ai ? "Focus plan refreshed" : "Roadmap refreshed");
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Refresh failed");
       }
@@ -238,8 +239,8 @@ export function RoadmapView({
           disabled={isPending}
           className="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-button text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
-          <Sparkles className="h-4 w-4" />
-          Refresh AI Plan
+          <RefreshCw className="h-4 w-4" />
+          Refresh Focus Plan
         </button>
       </div>
 
@@ -488,30 +489,52 @@ export function RoadmapView({
                     onClick={saveSelected}
                   />
                   <ActionButton
-                    label="Done"
+                    label="Mark Done"
                     icon={Check}
                     disabled={isPending}
                     onClick={() => patchItem(selected.id, { status: "done" })}
                   />
                   <ActionButton
-                    label="Task"
-                    icon={Link2}
-                    disabled={isPending || Boolean(selected.linked_task_id)}
-                    onClick={() => linkItem(selected.id, "task")}
-                  />
-                  <ActionButton
-                    label="Pin"
-                    icon={Milestone}
-                    disabled={isPending || Boolean(selected.linked_milestone_id)}
-                    onClick={() => linkItem(selected.id, "milestone")}
-                  />
-                  <ActionButton
-                    label="Hide"
-                    icon={EyeOff}
+                    label="More"
+                    icon={MoreHorizontal}
                     disabled={isPending}
-                    onClick={() => patchItem(selected.id, { hidden: true })}
+                    onClick={() => setShowSecondaryActions((current) => !current)}
                   />
                 </div>
+                {showSecondaryActions && (
+                  <div className="flex flex-wrap gap-2 rounded-md border border-hairline bg-surface-2/70 p-2">
+                    <ActionButton
+                      label="Create Task"
+                      icon={Link2}
+                      disabled={isPending || Boolean(selected.linked_task_id)}
+                      onClick={() => linkItem(selected.id, "task")}
+                    />
+                    <ActionButton
+                      label="Pin Milestone"
+                      icon={Milestone}
+                      disabled={isPending || Boolean(selected.linked_milestone_id)}
+                      onClick={() => linkItem(selected.id, "milestone")}
+                    />
+                    <ActionButton
+                      label="Hide"
+                      icon={EyeOff}
+                      disabled={isPending}
+                      onClick={() => patchItem(selected.id, { hidden: true })}
+                    />
+                  </div>
+                )}
+                {(message || error) && (
+                  <p
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-caption",
+                      error
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : "border-primary/25 bg-primary/10 text-ink"
+                    )}
+                  >
+                    {error ?? message}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="mt-3 text-body-sm text-ink-subtle">
@@ -519,17 +542,6 @@ export function RoadmapView({
               </p>
             )}
           </section>
-
-          {(message || error) && (
-            <p
-              className={cn(
-                "text-caption",
-                error ? "text-destructive" : "text-ink-tertiary"
-              )}
-            >
-              {error ?? message}
-            </p>
-          )}
         </aside>
       </div>
     </div>

@@ -34,7 +34,7 @@ export function ReindexResourceButton({ resourceId }: { resourceId: string }) {
       disabled={reindexing}
       aria-label="Reindex resource"
       title="Reindex resource"
-      className="h-8 w-8 text-ink-tertiary hover:text-ink"
+      className="h-8 w-8 text-ink-tertiary hover:text-ink focus-visible:ring-2 focus-visible:ring-primary/50"
     >
       <RefreshCw className={`h-4 w-4 ${reindexing ? "animate-spin" : ""}`} />
     </Button>
