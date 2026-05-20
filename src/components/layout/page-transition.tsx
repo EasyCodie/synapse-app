@@ -1,30 +1,31 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { useHasHydrated } from "@/hooks/use-has-hydrated";
 
 interface PageTransitionProps {
   children: React.ReactNode;
   className?: string;
 }
 
-const pageVariants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.2,
-      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-    },
-  },
-};
+const easeOutQuart = [0.25, 1, 0.5, 1] as [number, number, number, number];
 
 export function PageTransition({ children, className }: PageTransitionProps) {
+  const pathname = usePathname();
+  const hasHydrated = useHasHydrated();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = hasHydrated && !reduceMotion;
+
   return (
     <motion.div
-      variants={pageVariants}
-      initial="hidden"
-      animate="visible"
+      key={pathname}
+      initial={shouldAnimate ? { opacity: 0, y: 6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: shouldAnimate ? 0.18 : 0,
+        ease: easeOutQuart,
+      }}
       className={className}
     >
       {children}

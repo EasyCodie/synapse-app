@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
 import { MobileSidebarToggle } from "@/components/sidebar/mobile-sidebar-toggle";
+import { PageTransition } from "@/components/layout/page-transition";
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ function subscribe(callback: () => void) {
 export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShellProps) {
   const storedCollapsed = useSyncExternalStore(subscribe, getStoredCollapsed, () => false);
   const [collapsed, setCollapsed] = useState(storedCollapsed);
+  const reduceMotion = useReducedMotion();
 
   function handleToggleCollapse() {
     setCollapsed((prev) => {
@@ -41,7 +43,10 @@ export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShell
       <motion.aside
         className="hidden shrink-0 flex-col overflow-hidden border-r border-hairline bg-sidebar md:flex"
         animate={{ width: collapsed ? 52 : 204 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.22,
+          ease: [0.25, 1, 0.5, 1],
+        }}
       >
         <SidebarNav
           userEmail={userEmail}
@@ -59,9 +64,9 @@ export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShell
 
       {/* Main content */}
       <main className="relative flex-1 overflow-y-auto bg-canvas">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-5 lg:px-6 pt-5 pb-8">
+        <PageTransition className="mx-auto min-h-full max-w-[1280px] px-4 pb-10 pt-5 md:px-6 lg:px-8">
           {children}
-        </div>
+        </PageTransition>
       </main>
     </div>
   );

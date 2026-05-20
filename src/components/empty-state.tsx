@@ -24,12 +24,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center py-16 px-6",
+        "animate-slide-up flex flex-col items-center justify-center px-6 py-16 text-center",
         className
       )}
     >
-      <div className="w-12 h-12 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center mb-4">
-        <Icon className="w-5 h-5 text-ink-subtle" />
+      <div className="surface-panel mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/20 bg-primary/8">
+        <Icon className="h-5 w-5 text-primary" />
       </div>
       <h3 className="text-card-title text-ink mb-2">{title}</h3>
       <p className="text-body-sm text-ink-subtle max-w-xs">{description}</p>

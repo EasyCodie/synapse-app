@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -94,11 +93,6 @@ const BOTTOM_ITEMS: NavItem[] = [
   },
 ];
 
-const iconHover = {
-  rest: { y: 0, rotate: 0, scale: 1 },
-  hover: { y: -1, rotate: -3, scale: 1.08 },
-};
-
 // Hoisted static element (react-best-practices: rendering-hoist-jsx)
 const collapsedSeparator = <div className="w-5 h-px bg-hairline mx-auto" />;
 
@@ -127,54 +121,30 @@ export function SidebarNav({
     const Icon = item.icon;
 
     return (
-      <motion.div
+      <Link
         key={item.href}
-        initial="rest"
-        whileHover="hover"
-        whileTap={{ scale: 0.98 }}
+        href={item.href}
+        className={cn(
+          "group relative flex items-center gap-2.5 rounded-md border text-cell transition-colors duration-150",
+          collapsed ? "justify-center px-2 min-h-[30px]" : "px-2.5 py-1.5 min-h-[30px]",
+          active
+            ? "border-primary/35 bg-primary/8 text-primary"
+            : "border-transparent text-ink-tertiary hover:border-hairline hover:bg-surface-2/40 hover:text-ink-subtle"
+        )}
+        title={collapsed ? item.label : undefined}
       >
-        <Link
-          href={item.href}
-          className={cn(
-            "relative flex items-center gap-2.5 rounded-md border text-cell transition-colors duration-150 group",
-            collapsed ? "justify-center px-2 min-h-[30px]" : "px-2.5 py-1.5 min-h-[30px]",
-            active
-              ? "border-hairline-strong bg-surface-2/60 text-primary"
-              : "border-transparent text-ink-tertiary hover:border-hairline hover:bg-surface-2/40 hover:text-ink-subtle"
-          )}
-          title={collapsed ? item.label : undefined}
-        >
-          {/* Active indicator */}
-          <AnimatePresence>
-            {active && (
-              <motion.div
-                layoutId="sidebar-active-indicator"
-                className="absolute left-0 top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-r-full bg-primary"
-                initial={{ opacity: 0, scaleY: 0 }}
-                animate={{ opacity: 1, scaleY: 1 }}
-                exit={{ opacity: 0, scaleY: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center transition-transform duration-150 ease-[var(--ease-out-quart)] motion-safe:group-hover:-translate-y-px motion-safe:group-hover:scale-105">
+          <Icon
+            className={cn(
+              "w-4 h-4 shrink-0 transition-colors duration-150",
+              active ? "text-primary" : "text-ink-tertiary group-hover:text-ink-subtle"
             )}
-          </AnimatePresence>
-
-          <motion.span
-            variants={iconHover}
-            transition={{ type: "spring", stiffness: 420, damping: 24 }}
-            className="flex h-4 w-4 shrink-0 items-center justify-center"
-          >
-            <Icon
-              className={cn(
-                "w-4 h-4 shrink-0 transition-colors duration-150",
-                active ? "text-primary" : "text-ink-tertiary group-hover:text-ink-subtle"
-              )}
-            />
-          </motion.span>
-          {!collapsed && (
-            <span className="flex-1 truncate">{item.label}</span>
-          )}
-        </Link>
-      </motion.div>
+          />
+        </span>
+        {!collapsed && (
+          <span className="flex-1 truncate">{item.label}</span>
+        )}
+      </Link>
     );
   }
 
