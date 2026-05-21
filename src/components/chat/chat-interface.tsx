@@ -50,6 +50,12 @@ interface ChatSource {
   source_type: string;
   source_id: string;
   similarity?: number;
+  chunk_index?: number;
+  word_start?: number;
+  word_end?: number;
+  heading?: string;
+  page_label?: string;
+  slide_label?: string;
 }
 
 interface ChatAttachment {
@@ -1379,8 +1385,9 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
           const href =
             source.source_type === "resource" ||
             source.source_type === "attachment_resource"
-              ? `/resources?resource=${encodeURIComponent(source.source_id)}`
+              ? resourceSourceHref(source)
               : `/search?source=${encodeURIComponent(source.source_id)}`;
+          const detail = sourceDetailLabel(source);
 
           return (
           <a
@@ -1398,6 +1405,8 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
               <span className="text-[10px] text-ink-tertiary tabular-nums">
                 {(source.similarity * 100).toFixed(0)}%
               </span>
+            ) : detail ? (
+              <span className="text-[10px] text-ink-tertiary">{detail}</span>
             ) : (
               <span className="text-[10px] text-ink-tertiary">attached</span>
             )}
@@ -1408,4 +1417,19 @@ function SourcesList({ sources }: { sources: ChatSource[] }) {
       </div>
     </div>
   );
+}
+
+function resourceSourceHref(source: ChatSource) {
+  const base = `/resources/${encodeURIComponent(source.source_id)}`;
+  if (typeof source.chunk_index !== "number") return base;
+
+  return `${base}?chunk=${source.chunk_index}#chunk-${source.chunk_index}`;
+}
+
+function sourceDetailLabel(source: ChatSource) {
+  if (source.heading) return source.heading;
+  if (source.page_label) return source.page_label;
+  if (source.slide_label) return source.slide_label;
+  if (typeof source.chunk_index === "number") return `chunk ${source.chunk_index + 1}`;
+  return null;
 }

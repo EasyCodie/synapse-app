@@ -72,7 +72,16 @@ async function ensureDb() {
       onboarding_complete: false,
       created_at: now(),
     });
-    await writeDbFile(db);
+    await writeInitialDbFile(db);
+  }
+}
+
+async function writeInitialDbFile(db: Db) {
+  try {
+    await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), { flag: "wx" });
+  } catch (error) {
+    const code = error instanceof Error && "code" in error ? error.code : null;
+    if (code !== "EEXIST") throw error;
   }
 }
 
@@ -254,6 +263,11 @@ function withDefaults(table: string, row: Row) {
   }
   if (table === "curriculum_documents") {
     stamped.source ??= "google_drive";
+    stamped.template_type ??= null;
+    stamped.selection_method ??= null;
+    stamped.mime_type ??= null;
+    stamped.last_opened_at ??= null;
+    stamped.last_synced_at ??= null;
     stamped.updated_at ??= stamped.created_at;
   }
   if (table === "roadmap_items") {
@@ -547,6 +561,7 @@ export async function createClient() {
           id: row.id,
           source_type: row.source_type,
           source_id: row.source_id,
+          chunk_index: row.chunk_index ?? row.metadata?.chunk_index ?? null,
           content_text: row.content_text,
           metadata: row.metadata ?? {},
           similarity: Array.isArray(row.embedding)

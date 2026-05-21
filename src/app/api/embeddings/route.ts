@@ -2,6 +2,7 @@ import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
 import { clearRoadmapInsightCache } from "@/lib/roadmap-ai";
+import { createEmbeddingChunks } from "@/lib/resource-chunking";
 import { z } from "zod";
 
 const EmbeddingRequestSchema = z.object({
@@ -10,21 +11,6 @@ const EmbeddingRequestSchema = z.object({
   content_text: z.string().min(1),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
-
-const CHUNK_SIZE = 500;
-const CHUNK_OVERLAP = 50;
-
-function chunkText(text: string): string[] {
-  const words = text.split(/\s+/);
-  const chunks: string[] = [];
-
-  for (let i = 0; i < words.length; i += CHUNK_SIZE - CHUNK_OVERLAP) {
-    const chunk = words.slice(i, i + CHUNK_SIZE).join(" ");
-    if (chunk.trim()) chunks.push(chunk);
-  }
-
-  return chunks.length > 0 ? chunks : [text];
-}
 
 export async function POST(request: Request) {
   const local = await createClient();
@@ -53,21 +39,25 @@ export async function POST(request: Request) {
       .eq("source_id", source_id);
 
     // Chunk and embed
-    const chunks = chunkText(content_text);
+    const chunks = createEmbeddingChunks(content_text, {
+      ...(metadata ?? {}),
+      source_type,
+      source_id,
+    });
     const embeddingRows = [];
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk) continue;
-      const embedding = await generateEmbedding(chunk);
+      const embedding = await generateEmbedding(chunk.content_text);
       embeddingRows.push({
         user_id: user.id,
         source_type,
         source_id,
-        chunk_index: i,
-        content_text: chunk,
+        chunk_index: chunk.metadata.chunk_index,
+        content_text: chunk.content_text,
         embedding,
-        metadata: metadata ?? {},
+        metadata: chunk.metadata,
       });
     }
 

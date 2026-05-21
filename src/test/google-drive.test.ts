@@ -3,6 +3,10 @@ import {
   extractGoogleDocumentPlainText,
   parseGoogleDocumentId,
 } from "@/lib/google-drive";
+import {
+  buildCurriculumDocumentTemplate,
+  defaultTemplateTypeForOwner,
+} from "@/lib/curriculum-document-templates";
 
 describe("Google Drive helpers", () => {
   it("parses Google document ids from common link shapes", () => {
@@ -14,6 +18,7 @@ describe("Google Drive helpers", () => {
     expect(
       parseGoogleDocumentId("https://drive.google.com/open?id=doc_123-abc"),
     ).toBe("doc_123-abc");
+    expect(parseGoogleDocumentId("doc_123-abc")).toBe("doc_123-abc");
   });
 
   it("extracts readable text from Google Docs paragraphs and tables", () => {
@@ -65,5 +70,16 @@ describe("Google Drive helpers", () => {
     });
 
     expect(text).toBe("Photosynthesis\nReactants\tProducts");
+  });
+
+  it("builds typed curriculum document templates", () => {
+    expect(defaultTemplateTypeForOwner("tok")).toBe("tok_essay");
+    expect(
+      buildCurriculumDocumentTemplate("ia", {
+        title: "Economics IA",
+        subjectName: "Economics",
+        researchQuestion: "How does a subsidy affect supply?",
+      }),
+    ).toContain("Research question\nHow does a subsidy affect supply?");
   });
 });

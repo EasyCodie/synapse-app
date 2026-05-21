@@ -60,16 +60,26 @@ export async function searchResources(
     const formatted = results.map(
       (
         r: {
-          metadata: { title?: string };
+          metadata: {
+            title?: string;
+            chunk_index?: number;
+            word_start?: number;
+            word_end?: number;
+            heading?: string;
+            page_label?: string;
+            slide_label?: string;
+          };
           source_type: string;
           source_id: string;
+          chunk_index?: number | null;
           content_text: string;
           similarity: number;
         },
         i: number,
       ) => {
         const title = r.metadata?.title ?? r.source_type;
-        return `[Source ${i + 1}] "${title}" (${(r.similarity * 100).toFixed(0)}% match, id: ${r.source_id}, type: ${r.source_type})\n${r.content_text}`;
+        const sourceDetails = formatSearchSourceDetails(r);
+        return `[Source ${i + 1}] "${title}" (${sourceDetails})\n${r.content_text}`;
       },
     );
 
@@ -80,6 +90,49 @@ export async function searchResources(
 }
 
 // ─── Tool: Create Flashcards ───────────────────────────────────────────────────
+
+function formatSearchSourceDetails(result: {
+  metadata?: {
+    chunk_index?: number;
+    word_start?: number;
+    word_end?: number;
+    heading?: string;
+    page_label?: string;
+    slide_label?: string;
+  };
+  source_type: string;
+  source_id: string;
+  chunk_index?: number | null;
+  similarity: number;
+}) {
+  const metadata = result.metadata ?? {};
+  const chunkIndex =
+    typeof metadata.chunk_index === "number"
+      ? metadata.chunk_index
+      : result.chunk_index;
+  const parts = [
+    `${(result.similarity * 100).toFixed(0)}% match`,
+    `id: ${result.source_id}`,
+    `type: ${result.source_type}`,
+  ];
+
+  if (typeof chunkIndex === "number") parts.push(`chunk: ${chunkIndex}`);
+  if (
+    typeof metadata.word_start === "number" &&
+    typeof metadata.word_end === "number"
+  ) {
+    parts.push(`words: ${metadata.word_start + 1}-${metadata.word_end + 1}`);
+  }
+  if (metadata.heading) parts.push(`heading: ${formatSourceLabel(metadata.heading)}`);
+  if (metadata.page_label) parts.push(`page: ${formatSourceLabel(metadata.page_label)}`);
+  if (metadata.slide_label) parts.push(`slide: ${formatSourceLabel(metadata.slide_label)}`);
+
+  return parts.join(", ");
+}
+
+function formatSourceLabel(value: string) {
+  return value.replace(/[(),]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+}
 
 interface CreateFlashcardsArgs {
   flashcards: Array<{ front: string; back: string; tags?: string[] }>;

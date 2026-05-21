@@ -1,12 +1,14 @@
 import crypto from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
+import type { CurriculumDocumentTemplateType } from "@/lib/curriculum-document-templates";
 import { createClient } from "@/lib/local/client";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DOCS_API = "https://docs.googleapis.com/v1";
+export const GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document";
 
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
@@ -14,6 +16,10 @@ const GOOGLE_SCOPES = [
 ];
 
 export const GOOGLE_PROVIDER = "google_drive";
+export type CurriculumDocumentSelectionMethod =
+  | "created"
+  | "pasted_url"
+  | "google_picker";
 
 // ─── Connection State Persistence ("Memory") ─────────────────────────────────
 // A lightweight state file that remembers the connection independent of the
@@ -84,6 +90,11 @@ export type CurriculumDocument = {
   document_url: string;
   folder_id?: string | null;
   source: "google_drive";
+  template_type?: CurriculumDocumentTemplateType | null;
+  selection_method?: CurriculumDocumentSelectionMethod | null;
+  mime_type?: string | null;
+  last_opened_at?: string | null;
+  last_synced_at?: string | null;
   created_at: string;
   updated_at?: string;
 };
@@ -116,10 +127,7 @@ type DriveFile = {
   id: string;
   name?: string;
   webViewLink?: string;
-};
-
-type GoogleDocumentMetadata = {
-  title?: string;
+  mimeType?: string;
 };
 
 type GoogleDocumentSnapshot = {
@@ -418,10 +426,17 @@ export async function disconnectGoogleDrive(userId: string) {
 
 async function getGoogleAccessToken(userId: string) {
   const config = getGoogleConfig();
-  if (!config) throw new Error("Google Drive is not configured");
+  if (!config)
+    throw new GoogleDriveError(
+      "google_not_configured",
+      "Google Drive is not configured",
+    );
   const integration = await getGoogleIntegration(userId);
   if (!integration)
-    throw new Error("Connect Google Drive before using Google documents");
+    throw new GoogleDriveError(
+      "google_not_connected",
+      "Connect Google Drive before using Google documents",
+    );
   const refreshToken = decryptToken(
     integration.encrypted_refresh_token,
     config.tokenKey,
@@ -433,7 +448,10 @@ async function getGoogleAccessToken(userId: string) {
     grant_type: "refresh_token",
   });
   if (!token.access_token)
-    throw new Error("Google did not return an access token");
+    throw new GoogleDriveError(
+      "missing_access_token",
+      "Google did not return an access token",
+    );
   return { accessToken: token.access_token, integration };
 }
 
@@ -452,10 +470,13 @@ async function googleFetch<T>(
   });
   const text = await response.text();
   const data = (text ? JSON.parse(text) : {}) as T & {
-    error?: { message?: string };
+    error?: { code?: number; message?: string; status?: string };
   };
   if (!response.ok) {
-    throw new Error(data.error?.message ?? "Google Drive request failed");
+    throw new GoogleDriveError(
+      data.error?.status?.toLowerCase() ?? `google_${response.status}`,
+      data.error?.message ?? "Google Drive request failed",
+    );
   }
   return data as T;
 }
@@ -577,6 +598,8 @@ export async function createCurriculumGoogleDoc({
   title,
   folderSegments,
   seedText,
+  templateType,
+  selectionMethod = "created",
 }: {
   userId: string;
   ownerType: CurriculumOwnerType;
@@ -585,6 +608,8 @@ export async function createCurriculumGoogleDoc({
   title: string;
   folderSegments: string[];
   seedText: string;
+  templateType: CurriculumDocumentTemplateType;
+  selectionMethod?: CurriculumDocumentSelectionMethod;
 }) {
   const { accessToken, folderId } = await ensureCurriculumFolderPath(
     userId,
@@ -597,7 +622,7 @@ export async function createCurriculumGoogleDoc({
       method: "POST",
       body: JSON.stringify({
         name: title,
-        mimeType: "application/vnd.google-apps.document",
+        mimeType: GOOGLE_DOC_MIME_TYPE,
         parents: [folderId],
       }),
     },
@@ -639,6 +664,11 @@ export async function createCurriculumGoogleDoc({
         `https://docs.google.com/document/d/${driveFile.id}/edit`,
       folder_id: folderId,
       source: GOOGLE_PROVIDER,
+      template_type: templateType,
+      selection_method: selectionMethod,
+      mime_type: GOOGLE_DOC_MIME_TYPE,
+      last_opened_at: null,
+      last_synced_at: now,
       created_at: now,
       updated_at: now,
     })
@@ -651,19 +681,51 @@ export async function getExistingGoogleDocumentTitle(
   userId: string,
   documentId: string,
 ) {
+  const metadata = await getExistingGoogleDocumentMetadata(userId, documentId);
+  return metadata.title;
+}
+
+export async function getExistingGoogleDocumentMetadata(
+  userId: string,
+  documentId: string,
+) {
   const { accessToken } = await getGoogleAccessToken(userId);
-  const url = new URL(`${DOCS_API}/documents/${documentId}`);
-  url.searchParams.set("fields", "title");
-  const metadata = await googleFetch<GoogleDocumentMetadata>(
-    accessToken,
-    url.toString(),
-    {
+  const url = new URL(`${DRIVE_API}/files/${documentId}`);
+  url.searchParams.set("fields", "id,name,mimeType,webViewLink");
+
+  let metadata: DriveFile;
+  try {
+    metadata = await googleFetch<DriveFile>(accessToken, url.toString(), {
       method: "GET",
-    },
-  );
-  const title = metadata.title?.trim();
+    });
+  } catch (error) {
+    if (error instanceof GoogleDriveError) {
+      throw new GoogleDriveError(
+        "document_inaccessible",
+        "Synapse cannot access that Google document. Choose it with the Google Picker or check that this Google account can open it.",
+      );
+    }
+    throw error;
+  }
+
+  if (metadata.mimeType !== GOOGLE_DOC_MIME_TYPE) {
+    throw new GoogleDriveError(
+      "document_not_google_doc",
+      "Select a Google Docs document. Drive files, PDFs, Sheets, and Slides cannot be attached as curriculum documents.",
+    );
+  }
+
+  const title = metadata.name?.trim();
   if (!title) throw new Error("Google did not return a document title");
-  return title;
+
+  return {
+    documentId: metadata.id,
+    title,
+    documentUrl:
+      metadata.webViewLink ??
+      `https://docs.google.com/document/d/${metadata.id}/edit`,
+    mimeType: metadata.mimeType,
+  };
 }
 
 export async function getGoogleDocumentResourceSnapshot(
@@ -737,6 +799,7 @@ function collectGoogleDocumentContent(
 
 export function parseGoogleDocumentId(url: string) {
   const trimmed = url.trim();
+  if (/^[a-zA-Z0-9_-]+$/.test(trimmed)) return trimmed;
   const match =
     trimmed.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/) ??
     trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ??

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/local/client";
 import { requireUser } from "@/lib/auth";
 import { getGoogleDriveStatus } from "@/lib/google-drive";
-import { Library } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Library } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { UploadResource } from "@/components/resources/upload-resource";
 import { DeleteResourceButton } from "@/components/resources/delete-resource-button";
@@ -117,16 +118,20 @@ export default async function ResourcesPage() {
                 className="group flex items-center gap-4 px-5 py-4 bg-surface-1 border border-hairline rounded-lg hover:border-hairline-strong transition-all duration-200"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
-                {/* File type badge */}
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${DOCUMENT_BADGE_CLASS}`}
+                <Link
+                  href={`/resources/${resource.id}`}
+                  className="group/link flex min-w-0 flex-1 items-center gap-4"
                 >
-                  <span className="text-caption font-semibold">
-                    {(TYPE_LABELS[resource.type] ?? "Document")
-                      .slice(0, 3)
-                      .toUpperCase()}
-                  </span>
-                </div>
+                  {/* File type badge */}
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${DOCUMENT_BADGE_CLASS}`}
+                  >
+                    <span className="text-caption font-semibold">
+                      {(TYPE_LABELS[resource.type] ?? "Document")
+                        .slice(0, 3)
+                        .toUpperCase()}
+                    </span>
+                  </div>
 
                 <div className="flex-1 min-w-0">
                   <p className="text-body-sm text-ink truncate">
@@ -195,6 +200,9 @@ export default async function ResourcesPage() {
                 </span>
 
                 {/* Delete — revealed on hover */}
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-ink-tertiary transition-colors duration-200 group-hover/link:text-ink-subtle" />
+                </Link>
+
                 <div className="flex shrink-0 items-center gap-1 rounded-md border border-hairline bg-surface-2/50 p-0.5">
                   <ReindexResourceButton resourceId={resource.id} />
                   <DeleteResourceButton resourceId={resource.id} />

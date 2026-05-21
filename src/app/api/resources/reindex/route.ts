@@ -2,47 +2,13 @@ import { createClient } from "@/lib/local/client";
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@/lib/embeddings";
 import { clearRoadmapInsightCache } from "@/lib/roadmap-ai";
+import { createEmbeddingChunks } from "@/lib/resource-chunking";
 import {
   extractResourceTextFromBuffer,
   getExtractionStatus,
+  inferResourceMimeType,
   sanitizeExtractedText,
 } from "@/lib/resource-upload";
-
-const CHUNK_SIZE = 500;
-const CHUNK_OVERLAP = 50;
-
-function chunkText(text: string): string[] {
-  const words = text.split(/\s+/);
-  const chunks: string[] = [];
-
-  for (let i = 0; i < words.length; i += CHUNK_SIZE - CHUNK_OVERLAP) {
-    const chunk = words.slice(i, i + CHUNK_SIZE).join(" ");
-    if (chunk.trim().length > 0) {
-      chunks.push(chunk);
-    }
-  }
-
-  return chunks;
-}
-
-function inferMimeType(resource: {
-  mime_type?: string | null;
-  type?: string | null;
-  file_path?: string | null;
-}) {
-  if (resource.mime_type) return resource.mime_type;
-  if (resource.type === "pdf" || resource.file_path?.toLowerCase().endsWith(".pdf")) {
-    return "application/pdf";
-  }
-  if (resource.file_path?.toLowerCase().endsWith(".docx")) {
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-  if (resource.file_path?.toLowerCase().endsWith(".pptx")) {
-    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-  }
-  if (resource.file_path?.toLowerCase().endsWith(".md")) return "text/markdown";
-  return "text/plain";
-}
 
 /**
  * POST /api/resources/reindex
@@ -71,7 +37,7 @@ export async function POST(request: Request) {
   // Fetch the resource
   const { data: resource, error: fetchError } = await local
     .from("resources")
-    .select("id, title, type, file_path, content_text, mime_type")
+    .select("id, title, type, file_path, content_text, mime_type, source_url")
     .eq("id", resource_id)
     .eq("user_id", user.id)
     .single();
@@ -111,7 +77,7 @@ export async function POST(request: Request) {
 
     const arrayBuffer = await fileData.arrayBuffer();
     contentText = sanitizeExtractedText(
-      await extractResourceTextFromBuffer(arrayBuffer, inferMimeType(resource))
+      await extractResourceTextFromBuffer(arrayBuffer, inferResourceMimeType(resource))
     );
     extractionStatus = getExtractionStatus(contentText, true);
 
@@ -153,23 +119,29 @@ export async function POST(request: Request) {
     .eq("user_id", user.id);
 
   // Chunk and embed
-  const chunks = chunkText(contentText);
+  const chunks = createEmbeddingChunks(contentText, {
+    title: resource.title,
+    file_type: inferResourceMimeType(resource),
+    source_url: resource.source_url ?? undefined,
+    source_type: "resource",
+    source_id: resource_id,
+  });
   let embeddedCount = 0;
 
   for (let i = 0; i < chunks.length; i++) {
     try {
       const chunk = chunks[i];
       if (!chunk) continue;
-      const embedding = await generateEmbedding(chunk);
+      const embedding = await generateEmbedding(chunk.content_text);
 
       const { error: insertError } = await local.from("embeddings").insert({
         user_id: user.id,
         source_type: "resource",
         source_id: resource_id,
-        chunk_index: i,
-        content_text: chunk,
+        chunk_index: chunk.metadata.chunk_index,
+        content_text: chunk.content_text,
         embedding: embedding,
-        metadata: { title: resource.title, chunk_index: i, total_chunks: chunks.length },
+        metadata: chunk.metadata,
       });
 
       if (!insertError) {

@@ -19,11 +19,18 @@ interface SearchResult {
   id: string;
   source_type: "note" | "resource" | "ia";
   source_id: string;
+  chunk_index?: number | null;
   content_text: string;
   metadata: {
     title?: string;
     subject_name?: string;
     subject_level?: string;
+    chunk_index?: number;
+    word_start?: number;
+    word_end?: number;
+    heading?: string;
+    page_label?: string;
+    slide_label?: string;
   };
   similarity: number;
 }
@@ -235,15 +242,20 @@ export default function SearchPage() {
 function ResultCard({ result }: { result: SearchResult }) {
   const config = SOURCE_CONFIG[result.source_type];
   const Icon = config.icon;
+  const chunkIndex =
+    typeof result.metadata.chunk_index === "number"
+      ? result.metadata.chunk_index
+      : result.chunk_index;
 
   const href =
     result.source_type === "resource"
-      ? "/resources"
+      ? resourceHref(result.source_id, chunkIndex)
       : result.source_type === "ia"
         ? "/ia-manager"
         : "/subjects";
 
   const similarity = Math.round(result.similarity * 100);
+  const location = resourceLocationLabel(result);
 
   return (
     <Link
@@ -267,6 +279,11 @@ function ResultCard({ result }: { result: SearchResult }) {
               {result.metadata.subject_level && ` ${result.metadata.subject_level}`}
             </span>
           )}
+          {location && (
+            <span className="hidden shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-caption text-ink-subtle sm:inline">
+              {location}
+            </span>
+          )}
         </div>
         <p className="text-caption text-ink-subtle line-clamp-2 leading-relaxed">
           {result.content_text}
@@ -280,6 +297,31 @@ function ResultCard({ result }: { result: SearchResult }) {
       </div>
     </Link>
   );
+}
+
+function resourceHref(sourceId: string, chunkIndex: number | null | undefined) {
+  if (typeof chunkIndex !== "number") {
+    return `/resources/${sourceId}`;
+  }
+
+  return `/resources/${sourceId}?chunk=${chunkIndex}#chunk-${chunkIndex}`;
+}
+
+function resourceLocationLabel(result: SearchResult) {
+  if (result.source_type !== "resource") return null;
+  const metadata = result.metadata;
+
+  if (metadata.heading) return metadata.heading;
+  if (metadata.page_label) return metadata.page_label;
+  if (metadata.slide_label) return metadata.slide_label;
+
+  const chunkIndex =
+    typeof metadata.chunk_index === "number"
+      ? metadata.chunk_index
+      : result.chunk_index;
+  if (typeof chunkIndex === "number") return `Chunk ${chunkIndex + 1}`;
+
+  return null;
 }
 
 function MatchBadge({ similarity }: { similarity: number }) {

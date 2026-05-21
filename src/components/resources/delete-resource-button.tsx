@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
 
-export function DeleteResourceButton({ resourceId }: { resourceId: string }) {
+export function DeleteResourceButton({
+  resourceId,
+  redirectTo,
+}: {
+  resourceId: string;
+  redirectTo?: string;
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
@@ -18,7 +24,11 @@ export function DeleteResourceButton({ resourceId }: { resourceId: string }) {
       });
 
       if (res.ok) {
-        router.refresh();
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          router.refresh();
+        }
       }
     } catch {
       // ignore

@@ -22,6 +22,11 @@ import {
 } from "@/lib/curriculum-shared";
 import { cn } from "@/lib/utils";
 import { displaySubjectName } from "@/lib/subject-display";
+import type { CurriculumDocumentTemplateType } from "@/lib/curriculum-document-templates";
+import {
+  GoogleDocPickerButton,
+  type GoogleDocPickerSelection,
+} from "./google-doc-picker-button";
 
 type SubjectDetail = {
   id: string;
@@ -66,6 +71,11 @@ export type CurriculumDocumentItem = {
   subject_id?: string | null;
   title: string;
   document_url: string;
+  template_type?: CurriculumDocumentTemplateType | null;
+  selection_method?: "created" | "pasted_url" | "google_picker" | null;
+  mime_type?: string | null;
+  last_opened_at?: string | null;
+  last_synced_at?: string | null;
   created_at: string;
 };
 
@@ -202,6 +212,50 @@ function StatusButtons({
       ))}
     </div>
   );
+}
+
+function documentTemplateLabel(type?: CurriculumDocumentTemplateType | null) {
+  switch (type) {
+    case "subject_notes":
+      return "Subject notes";
+    case "ia":
+      return "IA template";
+    case "ee":
+      return "EE template";
+    case "tok_exhibition":
+      return "TOK exhibition";
+    case "tok_essay":
+      return "TOK essay";
+    case "cas_portfolio":
+      return "CAS portfolio";
+    default:
+      return "Google Doc";
+  }
+}
+
+function selectionMethodLabel(
+  method?: CurriculumDocumentItem["selection_method"],
+) {
+  switch (method) {
+    case "created":
+      return "Created";
+    case "google_picker":
+      return "Picker";
+    case "pasted_url":
+      return "Linked";
+    default:
+      return null;
+  }
+}
+
+function formatDocumentDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export function SubjectWorkspace({
@@ -370,6 +424,7 @@ export function SubjectWorkspace({
         <DriveDocumentPanel
           ownerType="subject"
           ownerId={subject.id}
+          templateType="subject_notes"
           title="Google Docs"
           defaultTitle={`${displaySubjectName(subject.subject_name)} Notes`}
           documents={documents.filter(
@@ -405,6 +460,7 @@ export function SubjectWorkspace({
 export function DriveDocumentPanel({
   ownerType,
   ownerId,
+  templateType,
   title,
   defaultTitle,
   documents,
@@ -412,6 +468,7 @@ export function DriveDocumentPanel({
 }: {
   ownerType: CurriculumDocumentItem["owner_type"];
   ownerId: string;
+  templateType: CurriculumDocumentTemplateType;
   title: string;
   defaultTitle: string;
   documents: CurriculumDocumentItem[];
@@ -431,6 +488,25 @@ export function DriveDocumentPanel({
           owner_type: ownerType,
           owner_id: ownerId,
           title: docTitle,
+          template_type: templateType,
+          selection_method: "created",
+        }),
+      });
+    });
+  }
+
+  function choosePickerDocument(selection: GoogleDocPickerSelection) {
+    mutate(async () => {
+      await requestJson("/api/curriculum/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "link",
+          owner_type: ownerType,
+          owner_id: ownerId,
+          title: selection.title ?? docTitle,
+          document_id: selection.documentId,
+          template_type: templateType,
+          selection_method: "google_picker",
         }),
       });
     });
@@ -448,10 +524,21 @@ export function DriveDocumentPanel({
           owner_id: ownerId,
           title: docTitle,
           document_url: linkUrl,
+          template_type: templateType,
+          selection_method: "pasted_url",
         }),
       });
       setLinkUrl("");
     });
+  }
+
+  function markDocumentOpened(id: string) {
+    void fetch("/api/curriculum/documents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+      keepalive: true,
+    }).catch(() => undefined);
   }
 
   function unlinkDocument(id: string) {
@@ -487,18 +574,28 @@ export function DriveDocumentPanel({
         />
         <div className="flex flex-wrap gap-2">
           {driveStatus.configured && driveStatus.connected ? (
-            <button
-              type="button"
-              disabled={isPending || !docTitle.trim()}
-              onClick={createDocument}
-              className={cn(
-                buttonClass,
-                "bg-primary text-on-primary hover:bg-primary-hover",
-              )}
-            >
-              <Plus className="h-4 w-4" />
-              Create Doc
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={isPending || !docTitle.trim()}
+                onClick={createDocument}
+                className={cn(
+                  buttonClass,
+                  "bg-primary text-on-primary hover:bg-primary-hover",
+                )}
+              >
+                <Plus className="h-4 w-4" />
+                Create Doc
+              </button>
+              <GoogleDocPickerButton
+                disabled={isPending}
+                onPicked={choosePickerDocument}
+                className={cn(
+                  buttonClass,
+                  "border border-hairline bg-surface-2 text-ink hover:border-hairline-strong",
+                )}
+              />
+            </>
           ) : driveStatus.configured ? (
             <a
               href={`/api/integrations/google/connect?returnTo=${encodeURIComponent(pathname)}`}
@@ -545,41 +642,60 @@ export function DriveDocumentPanel({
             No Google Docs linked yet.
           </p>
         ) : (
-          documents.map((document) => (
-            <div
-              key={document.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-surface-2 px-3 py-2"
-            >
-              <a
-                href={document.document_url}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 text-body-sm text-ink transition-colors duration-200 hover:text-primary"
+          documents.map((document) => {
+            const method = selectionMethodLabel(document.selection_method);
+            const syncedAt = formatDocumentDate(document.last_synced_at);
+            const meta = [
+              documentTemplateLabel(document.template_type),
+              method,
+              syncedAt ? `Synced ${syncedAt}` : null,
+            ]
+              .filter(Boolean)
+              .join(" - ");
+
+            return (
+              <div
+                key={document.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-surface-2 px-3 py-2"
               >
-                <span className="truncate">{document.title}</span>
-              </a>
-              <div className="flex shrink-0 items-center gap-1">
-                <a
-                  href={document.document_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
-                  aria-label="Open Google Doc"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => unlinkDocument(document.id)}
-                  className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
-                  aria-label="Unlink Google Doc"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="min-w-0">
+                  <a
+                    href={document.document_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => markDocumentOpened(document.id)}
+                    className="block truncate text-body-sm text-ink transition-colors duration-200 hover:text-primary"
+                  >
+                    {document.title}
+                  </a>
+                  <p className="mt-0.5 truncate text-caption text-ink-tertiary">
+                    {meta}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <a
+                    href={document.document_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => markDocumentOpened(document.id)}
+                    className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
+                    aria-label="Open Google Doc"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => unlinkDocument(document.id)}
+                    className="rounded-md p-1.5 text-ink-tertiary transition-colors duration-200 hover:text-ink"
+                    aria-label="Unlink Google Doc"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
       <ErrorLine message={error} />
@@ -765,6 +881,7 @@ export function IAQuickEditor({
       <DriveDocumentPanel
         ownerType="ia"
         ownerId={ia.id}
+        templateType="ia"
         title="IA Document"
         defaultTitle={title || "Internal Assessment"}
         documents={documents}
@@ -1038,6 +1155,7 @@ export function EEEditor({
       <DriveDocumentPanel
         ownerType="ee"
         ownerId={ee.id}
+        templateType="ee"
         title="EE Document"
         defaultTitle={title || "Extended Essay"}
         documents={documents}
@@ -1199,6 +1317,7 @@ export function TOKEditor({
       <DriveDocumentPanel
         ownerType="tok"
         ownerId={tok.id}
+        templateType="tok_essay"
         title="TOK Document"
         defaultTitle={essayTitle || "Theory of Knowledge"}
         documents={documents}
@@ -1306,6 +1425,7 @@ export function CASEditor({
         <DriveDocumentPanel
           ownerType="cas"
           ownerId="cas"
+          templateType="cas_portfolio"
           title="CAS Portfolio"
           defaultTitle="CAS Portfolio"
           documents={documents}

@@ -95,6 +95,12 @@ interface ChatSource {
   source_id: string;
   title: string;
   similarity?: number;
+  chunk_index?: number;
+  word_start?: number;
+  word_end?: number;
+  heading?: string;
+  page_label?: string;
+  slide_label?: string;
 }
 
 function buildAttachmentContext(resources: AttachedResource[]) {
@@ -118,21 +124,60 @@ function buildAttachmentContext(resources: AttachedResource[]) {
 
 function extractSearchSources(toolResult: string): ChatSource[] {
   const sources: ChatSource[] = [];
-  const sourceRegex =
-    /\[Source\s+(\d+)\]\s+"([^"]+)"\s+\((\d+)% match,\s+id:\s+([^,\s]+),\s+type:\s+([^)]+)\)/g;
+  const sourceRegex = /\[Source\s+(\d+)\]\s+"([^"]+)"\s+\(([^)]*)\)/g;
   let match: RegExpExecArray | null;
 
   while ((match = sourceRegex.exec(toolResult)) !== null) {
+    const details = parseSourceDetails(match[3] ?? "");
     sources.push({
       index: Number(match[1]),
       title: match[2] ?? "Resource",
-      similarity: Number(match[3]) / 100,
-      source_id: match[4] ?? "",
-      source_type: match[5] ?? "resource",
+      similarity: details.similarity,
+      source_id: details.source_id,
+      source_type: details.source_type,
+      chunk_index: details.chunk_index,
+      word_start: details.word_start,
+      word_end: details.word_end,
+      heading: details.heading,
+      page_label: details.page_label,
+      slide_label: details.slide_label,
     });
   }
 
   return sources;
+}
+
+function parseSourceDetails(details: string): Omit<ChatSource, "index" | "title"> {
+  const parsed: Omit<ChatSource, "index" | "title"> = {
+    source_id: "",
+    source_type: "resource",
+  };
+  const matchScore = details.match(/(\d+)% match/);
+  if (matchScore?.[1]) parsed.similarity = Number(matchScore[1]) / 100;
+
+  for (const rawPart of details.split(",")) {
+    const [rawKey, ...rest] = rawPart.split(":");
+    const key = rawKey?.trim().toLowerCase();
+    const value = rest.join(":").trim();
+    if (!key || !value) continue;
+
+    if (key === "id") parsed.source_id = value;
+    if (key === "type") parsed.source_type = value;
+    if (key === "chunk") {
+      const chunkIndex = Number.parseInt(value, 10);
+      if (Number.isFinite(chunkIndex)) parsed.chunk_index = chunkIndex;
+    }
+    if (key === "heading") parsed.heading = value;
+    if (key === "page") parsed.page_label = value;
+    if (key === "slide") parsed.slide_label = value;
+    if (key === "words") {
+      const [start, end] = value.split("-").map((part) => Number.parseInt(part, 10));
+      if (Number.isFinite(start)) parsed.word_start = start - 1;
+      if (Number.isFinite(end)) parsed.word_end = end - 1;
+    }
+  }
+
+  return parsed;
 }
 
 // System prompt is now built dynamically via buildSystemPrompt() at request time.
@@ -526,7 +571,8 @@ export async function POST(request: Request) {
                     const existing = semanticSources.some(
                       (candidate) =>
                         candidate.source_type === source.source_type &&
-                        candidate.source_id === source.source_id
+                        candidate.source_id === source.source_id &&
+                        candidate.chunk_index === source.chunk_index
                     );
                     if (!existing) {
                       semanticSources.push({
