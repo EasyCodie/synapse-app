@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useHasHydrated } from "@/hooks/use-has-hydrated";
 
@@ -29,8 +29,7 @@ const itemVariants: Variants = {
 
 export function AnimatedList({ children, className }: AnimatedListProps) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div
@@ -46,8 +45,7 @@ export function AnimatedList({ children, className }: AnimatedListProps) {
 
 export function AnimatedItem({ children, className }: { children: React.ReactNode; className?: string }) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div variants={shouldAnimate ? itemVariants : undefined} className={className}>

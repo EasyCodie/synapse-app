@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import type { ReactNode } from "react";
 import { useHasHydrated } from "@/hooks/use-has-hydrated";
@@ -34,8 +34,7 @@ const itemVariants: Variants = {
 
 export function DashboardMotion({ children, className }: MotionProps) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div
@@ -51,8 +50,7 @@ export function DashboardMotion({ children, className }: MotionProps) {
 
 export function DashboardMotionItem({ children, className }: MotionProps) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div className={className} variants={shouldAnimate ? itemVariants : undefined}>
@@ -63,8 +61,7 @@ export function DashboardMotionItem({ children, className }: MotionProps) {
 
 export function DashboardMotionPanel({ children, className }: MotionProps) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div
@@ -79,8 +76,7 @@ export function DashboardMotionPanel({ children, className }: MotionProps) {
 
 export function DashboardMotionRow({ children, className }: MotionProps) {
   const hasHydrated = useHasHydrated();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = hasHydrated && !reduceMotion;
+  const shouldAnimate = hasHydrated;
 
   return (
     <motion.div

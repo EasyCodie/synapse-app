@@ -283,7 +283,7 @@ test.describe("critical Synapse components", () => {
         { link: "Roadmap", heading: "Roadmap" },
         { link: "Resource Library", heading: "Resource Library" },
         { link: "Search", heading: "Search" },
-        { link: "AI Chat", heading: "Synapse AI" },
+        { link: "Advisor", heading: "Advisor" },
         { link: "Flashcards", heading: "Flashcards" },
         { link: "Subjects", heading: "Subjects" },
         { link: "The Core", heading: "The Core" },
@@ -300,7 +300,7 @@ test.describe("critical Synapse components", () => {
       await page.goto("/dashboard");
       await page.getByLabel("Open navigation").click();
       await expect(page.getByLabel("Close navigation")).toBeVisible();
-      await page.getByRole("link", { name: "Search" }).click();
+      await page.getByRole("link", { name: "Search", exact: true }).click();
       await expect(page).toHaveURL(/\/search/);
       await expect(page.getByRole("heading", { name: "Search" })).toBeVisible();
       await page.setViewportSize({ width: 1440, height: 1000 });
@@ -344,7 +344,7 @@ test.describe("critical Synapse components", () => {
 
     await test.step("render deterministic AI chat streaming response", async () => {
       await page.goto("/chat");
-      await expect(page.getByText("Synapse AI")).toBeVisible();
+      await expect(page.getByText("Advisor", { exact: true }).first()).toBeVisible();
       await page.getByPlaceholder("Ask about your resources...").fill("List my resources");
       await page.keyboard.press("Enter");
       await expect(page.getByText("List my resources")).toBeVisible();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
 import { MobileSidebarToggle } from "@/components/sidebar/mobile-sidebar-toggle";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -27,7 +27,6 @@ function subscribe(callback: () => void) {
 export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShellProps) {
   const storedCollapsed = useSyncExternalStore(subscribe, getStoredCollapsed, () => false);
   const [collapsed, setCollapsed] = useState(storedCollapsed);
-  const reduceMotion = useReducedMotion();
 
   function handleToggleCollapse() {
     setCollapsed((prev) => {
@@ -44,7 +43,7 @@ export function WorkspaceShell({ children, userEmail, userName }: WorkspaceShell
         className="hidden shrink-0 flex-col overflow-hidden border-r border-hairline bg-sidebar md:flex"
         animate={{ width: collapsed ? 52 : 204 }}
         transition={{
-          duration: reduceMotion ? 0 : 0.22,
+          duration: 0.22,
           ease: [0.25, 1, 0.5, 1],
         }}
       >
